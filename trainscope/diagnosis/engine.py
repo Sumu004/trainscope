@@ -16,6 +16,7 @@ from ..analyzers.distributed import DistributedSummary
 from ..analyzers.memory import MemorySummary
 from ..analyzers.pipeline import PipelineSummary
 from ..analyzers.timing import TimingSummary
+from ..analyzers.trace import TraceSummary
 from ..core.events import StepRecord
 
 SEVERITY_ORDER = {"high": 0, "med": 1, "low": 2}
@@ -41,6 +42,7 @@ class DiagnosisContext:
     steps: list[StepRecord] | None = None
     distributed: DistributedSummary | None = None
     pipeline: PipelineSummary | None = None
+    trace: TraceSummary | None = None
 
 
 Rule = Callable[[DiagnosisContext], list[Finding]]

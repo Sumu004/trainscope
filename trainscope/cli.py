@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 
 from .analyzers.convergence import analyze_convergence
 from .analyzers.distributed import analyze_distributed, is_multirank, load_multirank
 from .analyzers.memory import analyze_memory
 from .analyzers.repro import diff_runs
 from .analyzers.timing import analyze_timing
+from .analyzers.trace import analyze_trace_file
 from .core.store import RunStore
 from .diagnosis.engine import DiagnosisContext, run_diagnosis
 from .report.cli_report import (
@@ -19,7 +21,11 @@ from .report.cli_report import (
     render_findings,
     render_memory,
     render_timing,
+    render_trace,
 )
+
+# Trace files trainscope will auto-detect inside a run directory.
+_TRACE_NAMES = ("trace.json", "trace.json.gz", "kineto.json", "kineto.json.gz")
 
 
 def cmd_analyze(args) -> int:
@@ -33,10 +39,10 @@ def cmd_analyze(args) -> int:
     else:
         store = RunStore.load(args.run_dir)
 
-    if store is None or not store.steps:
-        if distributed is None:
-            print(f"No steps found in {args.run_dir!r}.", file=sys.stderr)
-            return 1
+    trace = _resolve_trace(args)
+    if (store is None or not store.steps) and distributed is None and trace is None:
+        print(f"No steps or trace found in {args.run_dir!r}.", file=sys.stderr)
+        return 1
 
     steps = store.steps[args.warmup :] if store else []
     timing = analyze_timing(store.steps, warmup=args.warmup) if store else None
@@ -49,6 +55,7 @@ def cmd_analyze(args) -> int:
             convergence=convergence,
             steps=steps,
             distributed=distributed,
+            trace=trace,
         )
     )
 
@@ -60,9 +67,28 @@ def cmd_analyze(args) -> int:
         out += render_memory(memory)
         out += render_convergence(convergence)
     out += render_distributed(distributed)
+    out += render_trace(trace)
     out += render_findings(findings)
     print(out, end="")
     return 0
+
+
+def _resolve_trace(args):
+    """Load a Kineto trace from --trace, else auto-detect one in the run dir."""
+    path = getattr(args, "trace", None)
+    if path is None:
+        for name in _TRACE_NAMES:
+            cand = Path(args.run_dir) / name
+            if cand.exists():
+                path = cand
+                break
+    if path is None:
+        return None
+    try:
+        return analyze_trace_file(path)
+    except (OSError, ValueError) as exc:
+        print(f"Could not read trace {path!r}: {exc}", file=sys.stderr)
+        return None
 
 
 def cmd_diff(args) -> int:
@@ -84,6 +110,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_analyze.add_argument("run_dir", help="Path to a run directory")
     p_analyze.add_argument(
         "--warmup", type=int, default=0, help="Steps to drop from the front"
+    )
+    p_analyze.add_argument(
+        "--trace",
+        default=None,
+        help="Path to a torch.profiler/Kineto trace (.json/.json.gz) for "
+        "exposed-communication analysis. Auto-detected in the run dir if present.",
     )
     p_analyze.set_defaults(func=cmd_analyze)
 

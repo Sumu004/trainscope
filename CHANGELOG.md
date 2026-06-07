@@ -7,6 +7,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- **Exposed-communication analysis** — ingest a `torch.profiler`/Kineto trace
+  (`analyze --trace`, or auto-detected `trace.json[.gz]` in the run dir) and
+  compute, via exact interval arithmetic, how much collective communication
+  overlaps compute vs is *exposed* (on the critical path). Reports overlap
+  efficiency and a per-collective breakdown; new `DIST.EXPOSED_COMM` rule. The
+  overlap math is exact (tested on synthetic traces with known answers); the
+  parser is validated against a real `torch.profiler` export.
 - **Automatic instrumentation** — `AutoProfiler(run_dir, model, optimizer)`
   captures the full phase timeline (data / forward / backward / optimizer, plus
   synchronous `comm`) with **zero changes to the training loop**, via PyTorch

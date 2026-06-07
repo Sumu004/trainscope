@@ -83,6 +83,16 @@ isn't hidden behind compute. **Fix:** overlap communication with backward (DDP
 bucketing / `no_sync` for accumulation), increase per-step compute, enable
 gradient compression, or check interconnect bandwidth.
 
+### `DIST.EXPOSED_COMM`
+From a `torch.profiler`/Kineto kernel trace: a significant share of wall time is
+*exposed* communication — collective (all-reduce/all-gather/…) time that does
+**not** overlap any compute kernel, so it sits on the critical path. Overlapped
+communication is free; exposed communication is wall-time waste. **Fix:** improve
+compute/communication overlap — DDP gradient bucketing (`bucket_cap_mb`), avoid
+`find_unused_parameters` stalls, overlap the optimizer/all-reduce, or increase
+per-GPU compute so backward lasts long enough to hide the all-reduce. Pass the
+trace with `trainscope analyze <run> --trace trace.json`.
+
 ### `DIST.PIPELINE_BUBBLE`
 Pipeline idle time exceeds the inherent GPipe minimum `(p-1)/(m+p-1)` — i.e.
 there is *excess* bubble from scheduling/imbalance, not just from your stage and

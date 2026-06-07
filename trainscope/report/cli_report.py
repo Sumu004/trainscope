@@ -127,6 +127,25 @@ def render_pipeline(p) -> str:
     return "\n".join(lines) + "\n"
 
 
+def render_trace(t) -> str:
+    """Render a TraceSummary (exposed-communication analysis)."""
+    if not t or not t.has_comm:
+        return ""
+    lines = ["", "Communication overlap (from kernel trace):"]
+    lines.append(
+        f"  comm {t.total_comm_time * 1e3:.1f} ms · "
+        f"overlapped {t.overlap_efficiency * 100:.0f}% · "
+        f"exposed {t.exposed_comm_time * 1e3:.1f} ms "
+        f"({t.exposed_comm_fraction * 100:.0f}% of wall)"
+    )
+    if t.per_collective:
+        parts = ", ".join(
+            f"{k} {v * 1e3:.1f}ms" for k, v in sorted(t.per_collective.items())
+        )
+        lines.append(f"  by collective: {parts}")
+    return "\n".join(lines) + "\n"
+
+
 def render_diff(d) -> str:
     """Render a RunDiff (reproducibility comparison)."""
     lines = [f"Comparing  A='{d.name_a}'  vs  B='{d.name_b}'", ""]

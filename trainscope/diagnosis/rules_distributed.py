@@ -104,6 +104,38 @@ def comm_bound(ctx: DiagnosisContext) -> list[Finding]:
 
 
 @rule
+def exposed_comm(ctx: DiagnosisContext) -> list[Finding]:
+    t = ctx.trace
+    if not t or not t.has_comm:
+        return []
+    exposed_pct = t.exposed_comm_fraction * 100.0
+    # Only flag when exposed comm is a meaningful slice of wall time. Well-
+    # overlapped communication (high efficiency) is not a problem.
+    if exposed_pct < 5.0:
+        return []
+    sev = "high" if exposed_pct >= 15.0 else "med"
+    return [
+        Finding(
+            code="DIST.EXPOSED_COMM",
+            severity=sev,
+            title="Communication is not overlapped with compute",
+            detail=(
+                f"{exposed_pct:.0f}% of wall time is *exposed* communication — "
+                f"collective time that does not overlap any compute kernel. Only "
+                f"{t.overlap_efficiency * 100:.0f}% of the {t.total_comm_time * 1e3:.1f} "
+                f"ms of communication is hidden behind compute."
+            ),
+            suggestion=(
+                "Improve compute/communication overlap: enable DDP gradient "
+                "bucketing (tune `bucket_cap_mb`), avoid `find_unused_parameters` "
+                "stalls, overlap optimizer/all-reduce, or increase per-GPU compute "
+                "so backward lasts long enough to hide the all-reduce."
+            ),
+        )
+    ]
+
+
+@rule
 def pipeline_bubble(ctx: DiagnosisContext) -> list[Finding]:
     p = ctx.pipeline
     if not p:

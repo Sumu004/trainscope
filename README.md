@@ -102,6 +102,29 @@ it to the inherent GPipe minimum `(p-1)/(m+p-1)`, so it flags only the *excess*
 bubble you can actually fix — not the bubble that's just the cost of your `p`
 and `m`.
 
+### Exposed communication: the metric that decides large-scale efficiency
+
+Gradient all-reduce *can* run concurrently with backward compute — the part that
+overlaps is free, the part that doesn't is **exposed** and sits on the critical
+path. trainscope ingests a `torch.profiler`/Kineto trace and computes the split
+exactly (interval arithmetic over the kernel timeline):
+
+```
+Communication overlap (from kernel trace):
+  comm 36.0 ms · overlapped 67% · exposed 12.0 ms (20% of wall)
+
+  [HIGH] Communication is not overlapped with compute  (DIST.EXPOSED_COMM)
+        20% of wall time is exposed communication. Only 67% of the 36.0 ms of
+        communication is hidden behind compute.
+        -> DDP gradient bucketing (bucket_cap_mb), overlap optimizer/all-reduce,
+           or increase per-GPU compute so backward hides the all-reduce.
+```
+
+```bash
+trainscope analyze runs/job --trace trace.json   # from torch.profiler
+python examples/exposed_comm.py && trainscope analyze runs/trace_demo  # no GPU
+```
+
 ## Overhead
 
 Measured on `tests/test_overhead.py` (run `pytest -s`):

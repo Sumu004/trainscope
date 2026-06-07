@@ -16,6 +16,7 @@ from .analyzers.distributed import (
 from .analyzers.memory import MemorySummary, analyze_memory
 from .analyzers.pipeline import PipelineSummary, analyze_pipeline
 from .analyzers.timing import TimingSummary, analyze_timing
+from .analyzers.trace import TraceSummary, analyze_trace, analyze_trace_file
 from .auto import AutoProfiler
 from .core.events import StepRecord
 from .core.store import RunStore
@@ -40,6 +41,9 @@ __all__ = [
     "load_multirank",
     "analyze_pipeline",
     "PipelineSummary",
+    "analyze_trace",
+    "analyze_trace_file",
+    "TraceSummary",
     "run_diagnosis",
     "DiagnosisContext",
     "Finding",

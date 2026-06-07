@@ -118,6 +118,31 @@ critical-path wall loss, the per-rank straggler table, and communication share.
 See `examples/ddp_gloo.py` for a complete runnable CPU example (real gloo
 multi-process all-reduce, no GPU needed).
 
+## Exposed-communication analysis (from a kernel trace)
+
+Per-step phase timing can't tell you whether your all-reduce overlaps compute —
+that needs the kernel timeline. Capture a `torch.profiler` trace and hand it to
+trainscope:
+
+```python
+from torch.profiler import profile, ProfilerActivity
+
+with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA]) as prof:
+    for _ in range(10):
+        train_one_step()
+prof.export_chrome_trace("trace.json")
+```
+
+```bash
+trainscope analyze runs/job --trace trace.json
+# or drop the file in the run dir as trace.json[.gz] and it's auto-detected
+```
+
+trainscope classifies NCCL collective kernels vs compute kernels and reports the
+overlapped/exposed split and overlap efficiency. (Real overlap numbers require a
+multi-GPU trace; the interval math itself is exact and `examples/exposed_comm.py`
+demonstrates it with a synthetic trace.)
+
 ## Analyze a run
 
 ```bash
