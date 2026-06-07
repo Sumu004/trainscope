@@ -1,0 +1,59 @@
+# Changelog
+
+All notable changes to this project are documented here. The format is based on
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
+adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+- **Distributed vertical (headline)** — multi-rank critical-path analysis for
+  data-parallel training. `Profiler(distributed=True)` records every rank to
+  `run_dir/rank{k}/`; the analyzer aligns ranks on one timeline and computes
+  critical-path wall loss, communication fraction, sync skew, and load imbalance.
+- **Statistical straggler detection** — identifies a *persistent* straggler rank
+  via a binomial-persistence test (is one rank consistently the critical path,
+  beyond chance?), not a fixed threshold. Rules: `DIST.STRAGGLER`,
+  `DIST.LOAD_IMBALANCE`, `DIST.COMM_BOUND`.
+- **Pipeline-bubble analyzer** — measures achieved bubble from a per-stage
+  schedule and compares it to the inherent GPipe minimum `(p-1)/(m+p-1)`, so it
+  flags only *excess* bubble (`DIST.PIPELINE_BUBBLE`). Reproduces the closed form
+  exactly (tested across p, m).
+- **`comm()` context manager** to attribute collective time to a `comm` phase.
+- **Real `examples/ddp_gloo.py`** — runs genuine multi-process gloo DDP (CPU, no
+  GPU needed) with an injectable straggler; `trainscope analyze` then identifies
+  it. Backed by a real multi-process integration test.
+- CLI `analyze` auto-detects multi-rank run directories.
+
+### Changed
+- Packaging: version is now single-sourced from `trainscope.__version__` (Hatch
+  dynamic version); `docs/` added to the sdist.
+
+## [0.1.0] - 2026-06-06
+
+First public beta. One telemetry backbone feeding four analysis verticals plus a
+cross-signal diagnosis engine.
+
+### Added
+- **Profiler** — live, integer-nanosecond timing core with `step()` / `mark()`
+  primitives, `iter_data()` dataloader timing, scalar logging, and optional
+  device-memory capture. ~3 µs/step overhead.
+- **Integrations** — one-line PyTorch Lightning and Hugging Face `Trainer`
+  callbacks; DDP rank-aware (non-zero ranks no-op by default).
+- **Timing vertical** — per-step attribution to data / forward / backward /
+  optimizer with median/p95 and rules for dataloader-bound, backward-heavy,
+  optimizer-heavy, and jitter.
+- **Memory vertical** — CUDA + Apple MPS capture; fragmentation and
+  leak/growth detection.
+- **Convergence vertical** — loss trend, divergence (NaN/Inf), and robust
+  local-window spike detection for loss and grad-norm.
+- **Cross-signal rule** — correlates spikes across loss / grad-norm / step-time /
+  memory on one aligned timeline (the headline diagnostic).
+- **Reproducibility vertical** — `trainscope diff A B` compares provenance,
+  config, and outcomes; diagnoses nondeterminism and finds the first divergence
+  step.
+- **CLI** — `trainscope analyze` and `trainscope diff`.
+- Pure-stdlib core; CUDA/MPS/CPU examples; 58 tests.
+
+[Unreleased]: https://github.com/Sumu004/trainscope/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/Sumu004/trainscope/releases/tag/v0.1.0

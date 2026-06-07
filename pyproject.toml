@@ -1,0 +1,89 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "trainscope"
+dynamic = ["version"]
+description = "An intelligence layer for ML training: live profiling + post-training diagnosis."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Sumukh Chaluvaraju", email = "sumukhchaluvaraj@gmail.com" }]
+maintainers = [{ name = "Sumukh Chaluvaraju", email = "sumukhchaluvaraj@gmail.com" }]
+keywords = [
+    "pytorch",
+    "profiling",
+    "training",
+    "machine-learning",
+    "deep-learning",
+    "mlops",
+    "observability",
+    "performance",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: System :: Monitoring",
+    "Typing :: Typed",
+]
+dependencies = []  # core is pure-stdlib by design
+
+[project.optional-dependencies]
+torch = ["torch>=2.0"]
+lightning = ["lightning>=2.0"]
+huggingface = ["transformers>=4.30"]
+dev = ["pytest>=7", "pytest-cov", "ruff>=0.4", "build", "twine"]
+
+[project.scripts]
+trainscope = "trainscope.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/Sumu004/trainscope"
+Repository = "https://github.com/Sumu004/trainscope"
+Documentation = "https://github.com/Sumu004/trainscope/tree/main/docs"
+Issues = "https://github.com/Sumu004/trainscope/issues"
+Changelog = "https://github.com/Sumu004/trainscope/blob/main/CHANGELOG.md"
+
+# Single-source the version from the package itself (trainscope.__version__),
+# so a release is one edit in one file.
+[tool.hatch.version]
+path = "trainscope/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["trainscope"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/trainscope",
+    "/tests",
+    "/examples",
+    "/docs",
+    "/README.md",
+    "/LICENSE",
+    "/CHANGELOG.md",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "slow: end-to-end tests that spawn real processes (deselect with '-m \"not slow\"')",
+]
+
+[tool.ruff]
+line-length = 90
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B"]
+ignore = ["E731"]  # allow short lambdas in tests
