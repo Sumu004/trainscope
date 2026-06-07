@@ -1,22 +1,22 @@
-"""Real distributed-data-parallel run on the CPU `gloo` backend.
+"""Real distributed-data-parallel run with an injectable straggler.
 
-This spawns N actual OS processes that form a `torch.distributed` process group
-and train a tiny model with **real gradient all-reduce** — a genuine distributed
-system you can run on a laptop with no GPU. Each rank records its own timeline
-with trainscope; the all-reduce is wrapped in ``prof.comm()`` so the analyzer can
-separate communication from compute.
+Two launch modes, same code:
 
-Pass ``--straggler-rank K`` to make rank K spend extra compute each step; then
-``trainscope analyze`` will identify it as a persistent straggler from the
-multi-rank critical path.
+* **Laptop, no GPU** — spawns N processes on the CPU ``gloo`` backend:
 
-Usage::
+      python examples/ddp_gloo.py --ranks 4 --steps 80 --straggler-rank 2
+      trainscope analyze runs/ddp_gloo
 
-    pip install -e ".[torch]"
-    python examples/ddp_gloo.py --ranks 4 --steps 80 --straggler-rank 2
-    trainscope analyze runs/ddp_gloo
+* **Real multi-GPU** — launched by ``torchrun``, uses the ``nccl`` backend on
+  CUDA (this is the path the validation protocol in docs/VALIDATION.md uses):
 
-Requires only CPU PyTorch.
+      torchrun --nproc_per_node=2 examples/ddp_gloo.py --steps 200 --straggler-rank 1
+      trainscope analyze runs/ddp_gloo
+
+Each rank records its own timeline; the gradient all-reduce is wrapped in
+``prof.comm()`` so the analyzer separates communication from compute. Rank
+``--straggler-rank`` does extra compute each step, so trainscope's multi-rank
+critical-path analysis should identify it as a persistent straggler.
 """
 
 from __future__ import annotations
@@ -34,42 +34,50 @@ import torch.nn as nn
 from trainscope import Profiler
 
 
-def _worker(rank: int, args) -> None:
-    os.environ.setdefault("MASTER_ADDR", "127.0.0.1")
-    os.environ.setdefault("MASTER_PORT", "29501")
-    os.environ["RANK"] = str(rank)
-    os.environ["WORLD_SIZE"] = str(args.ranks)
-    dist.init_process_group("gloo", rank=rank, world_size=args.ranks)
+def _run_rank(
+    rank: int, world_size: int, args, backend: str, clean_first: bool = False
+) -> None:
+    if clean_first:
+        shutil.rmtree(args.run_dir, ignore_errors=True)
+    dist.init_process_group(backend, rank=rank, world_size=world_size)
+    # Barrier after init guarantees rank 0's cleanup precedes any rank's start().
+    dist.barrier()
+    use_cuda = backend == "nccl" and torch.cuda.is_available()
+    device = (
+        torch.device(f"cuda:{rank % torch.cuda.device_count()}")
+        if use_cuda
+        else (torch.device("cpu"))
+    )
+    if use_cuda:
+        torch.cuda.set_device(device)
     torch.manual_seed(1234 + rank)
 
-    model = nn.Sequential(nn.Linear(256, 256), nn.ReLU(), nn.Linear(256, 256))
+    model = nn.Sequential(nn.Linear(256, 256), nn.ReLU(), nn.Linear(256, 256)).to(device)
     opt = torch.optim.SGD(model.parameters(), lr=0.01)
     loss_fn = nn.MSELoss()
 
-    prof = Profiler(args.run_dir, name="ddp_gloo", distributed=True, warmup=args.warmup)
+    prof = Profiler(
+        args.run_dir, name="ddp", distributed=True, warmup=args.warmup, sync=use_cuda
+    )
     prof.start()
     for _ in range(args.steps + args.warmup):
-        x = torch.randn(args.batch, 256)
-        y = torch.randn(args.batch, 256)
+        x = torch.randn(args.batch, 256, device=device)
+        y = torch.randn(args.batch, 256, device=device)
         with prof.step():
-            out = model(x)
-            loss = loss_fn(out, y)
+            loss = loss_fn(model(x), y)
             prof.mark("forward")
             opt.zero_grad()
             loss.backward()
-            # Injected straggler: this rank does extra (wasted) compute, so it
-            # consistently reaches the all-reduce barrier last.
             if rank == args.straggler_rank:
-                _busy = torch.randn(512, 512)
+                busy = torch.randn(512, 512, device=device)
                 for _ in range(args.straggler_work):
-                    _busy = _busy @ _busy * 1e-4 + 0.1
+                    busy = busy @ busy * 1e-4 + 0.1
             prof.mark("backward")
-            # Real gradient all-reduce across ranks — the synchronization point.
             with prof.comm():
                 for p in model.parameters():
                     if p.grad is not None:
                         dist.all_reduce(p.grad, op=dist.ReduceOp.SUM)
-                        p.grad /= args.ranks
+                        p.grad /= world_size
             opt.step()
             prof.mark("optimizer")
             prof.log(loss=loss.item())
@@ -77,13 +85,21 @@ def _worker(rank: int, args) -> None:
     dist.barrier()
     dist.destroy_process_group()
     if rank == 0:
-        print(f"Done. {args.ranks} ranks → {args.run_dir}")
+        print(f"Done ({backend}, {world_size} ranks) → {args.run_dir}")
         print(f"Now run:  trainscope analyze {args.run_dir}")
+
+
+def _spawn_worker(rank: int, args) -> None:
+    os.environ.setdefault("MASTER_ADDR", "127.0.0.1")
+    os.environ.setdefault("MASTER_PORT", "29501")
+    os.environ["RANK"] = str(rank)
+    os.environ["WORLD_SIZE"] = str(args.ranks)
+    _run_rank(rank, args.ranks, args, backend="gloo")
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--ranks", type=int, default=4)
+    ap.add_argument("--ranks", type=int, default=4, help="processes (CPU/gloo mode)")
     ap.add_argument("--steps", type=int, default=80)
     ap.add_argument("--warmup", type=int, default=5)
     ap.add_argument("--batch", type=int, default=64)
@@ -92,10 +108,18 @@ def main() -> None:
     ap.add_argument("--run-dir", default="runs/ddp_gloo")
     args = ap.parse_args()
 
-    shutil.rmtree(args.run_dir, ignore_errors=True)
-    t0 = time.time()
-    mp.spawn(_worker, args=(args,), nprocs=args.ranks, join=True)
-    print(f"({time.time() - t0:.1f}s wall)")
+    # Launched by torchrun? Then RANK/WORLD_SIZE are set per process: run one rank
+    # with nccl (GPU) or gloo (CPU). Otherwise spawn `--ranks` gloo processes.
+    if "RANK" in os.environ and "WORLD_SIZE" in os.environ:
+        rank = int(os.environ["RANK"])
+        world_size = int(os.environ["WORLD_SIZE"])
+        backend = "nccl" if torch.cuda.is_available() else "gloo"
+        _run_rank(rank, world_size, args, backend=backend, clean_first=(rank == 0))
+    else:
+        shutil.rmtree(args.run_dir, ignore_errors=True)
+        t0 = time.time()
+        mp.spawn(_spawn_worker, args=(args,), nprocs=args.ranks, join=True)
+        print(f"({time.time() - t0:.1f}s wall)")
 
 
 if __name__ == "__main__":

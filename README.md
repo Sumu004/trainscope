@@ -272,11 +272,23 @@ training loop → collectors → RunStore (aligned timeline)
 Adding a heuristic is one decorated function (`@rule`); adding a vertical is one
 analyzer over the existing timeline.
 
+## Status & validation
+
+trainscope is **v0.1, single-node validated.** The timing/auto-instrumentation/
+straggler-statistics/exposed-comm-math/FLOP-counting paths are tested on real
+torch and real multi-process gloo DDP (and auto-instrumentation is verified
+correct under gradient accumulation and activation checkpointing). The numbers
+that need real multi-GPU NCCL — exposed comm and MFU on actual hardware — are
+**not yet validated at scale**; see [docs/VALIDATION.md](docs/VALIDATION.md) for
+exactly what's proven where, and a reproducible GPU protocol. DDP is first-class;
+FSDP/tensor/pipeline parallelism are not yet.
+
 ## Documentation
 
 - [Usage guide](docs/usage.md) — install, instrument, and the CLI.
 - [Architecture](docs/architecture.md) — the one-timeline design.
 - [Diagnostics reference](docs/diagnostics.md) — every finding and its fix.
+- [Validation](docs/VALIDATION.md) — what's proven, and the multi-GPU protocol.
 
 ## Contributing
 

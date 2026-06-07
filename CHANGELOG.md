@@ -6,6 +6,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- **AutoProfiler is now correct on real models.** A forward re-entrancy guard
+  means gradient accumulation records one step per `optimizer.step` (not per
+  micro-batch), and activation checkpointing (forward recomputed during backward)
+  no longer corrupts the step structure. Tested with both.
+- Added `docs/VALIDATION.md` (what's validated where + a multi-GPU protocol) and
+  made `examples/ddp_gloo.py` run under `torchrun` on NCCL/CUDA as well as CPU
+  gloo, so the GPU validation is executable.
+
 ### Added
 - **Training Efficiency Budget (MFU)** — a single accounting identity that
   decomposes attributed wall time into named line items (useful compute /

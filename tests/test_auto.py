@@ -91,6 +91,54 @@ def test_context_manager(tmp_path):
     assert len(RunStore.load(run_dir).steps) == 5
 
 
+def test_gradient_accumulation_one_step_per_optimizer_step(tmp_path):
+    # Multiple forward/backward per optimizer.step must record ONE step each,
+    # not one per micro-batch.
+    run_dir = tmp_path / "auto"
+    model = nn.Linear(32, 32)
+    opt = torch.optim.SGD(model.parameters(), lr=0.01)
+    acc = 3
+    n_steps = 5
+    prof = AutoProfiler(run_dir, model, opt, warmup=0)
+    prof.start()
+    for _ in range(n_steps):
+        for _ in range(acc):
+            loss = model(torch.randn(8, 32)).pow(2).mean() / acc
+            loss.backward()
+        opt.step()
+        opt.zero_grad()
+    prof.finish()
+    store = RunStore.load(run_dir)
+    assert len(store.steps) == n_steps  # not n_steps * acc
+    for rec in store.steps:
+        assert rec.phases.get(FORWARD, 0) > 0
+        assert rec.phases.get(BACKWARD, 0) > 0
+
+
+def test_activation_checkpointing_does_not_corrupt_steps(tmp_path):
+    # Activation checkpointing recomputes forward DURING backward, re-firing the
+    # forward hooks. The step structure must stay intact (one step per opt.step).
+    from torch.utils.checkpoint import checkpoint
+
+    run_dir = tmp_path / "auto"
+    model = nn.Sequential(nn.Linear(32, 32), nn.ReLU(), nn.Linear(32, 32))
+    opt = torch.optim.SGD(model.parameters(), lr=0.01)
+    n_steps = 4
+    prof = AutoProfiler(run_dir, model, opt, warmup=0)
+    prof.start()
+    for _ in range(n_steps):
+        x = torch.randn(8, 32, requires_grad=True)
+        out = checkpoint(model, x, use_reentrant=False)  # recompute in backward
+        out.pow(2).mean().backward()
+        opt.step()
+        opt.zero_grad()
+    prof.finish()
+    store = RunStore.load(run_dir)
+    assert len(store.steps) == n_steps  # recompute must not spawn extra steps
+    for rec in store.steps:
+        assert rec.total() > 0
+
+
 def test_no_optimizer_does_not_crash(tmp_path):
     # Without an optimizer there's no step boundary; start/finish must be safe.
     model = nn.Linear(8, 8)

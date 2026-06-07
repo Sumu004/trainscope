@@ -32,8 +32,11 @@ How it works (the step boundary is ``optimizer.step``):
   deliberately *not* split out, because their cost is genuinely hidden inside
   backward; separating them would double-count wall time.
 
-Assumes one forward + backward per optimizer step (the common case). For gradient
-accumulation, use the manual ``Profiler``. Everything is restored on ``finish()``.
+Robust to real models: a forward re-entrancy guard means **gradient accumulation**
+(multiple forward/backward per step) records one step per ``optimizer.step``, and
+**activation checkpointing** (forward recomputed during backward) does not corrupt
+the step structure — the recompute is folded into the same step. Everything is
+restored on ``finish()``.
 """
 
 from __future__ import annotations
@@ -94,6 +97,12 @@ class AutoProfiler:
         self._comm_ns = 0
         self._opt_end_ns: int | None = None
         self._started = False
+        # State machine: "idle" (no step) -> "active" (between first forward and
+        # optimizer.step) -> "pending" (after optimizer.step, held open for
+        # post-step logging). ``_depth`` tracks forward re-entrancy so nested or
+        # recomputed forwards (activation checkpointing) don't corrupt the step.
+        self._state = "idle"
+        self._depth = 0
 
         # MFU anchor (optional).
         self._measure_flops = measure_flops
@@ -214,25 +223,47 @@ class AutoProfiler:
     def _on_forward_pre(self, _module, _inputs) -> None:
         if self._measuring:
             return  # ignore the forward we run ourselves to count FLOPs
+        # Re-entrancy guard: only the OUTERMOST forward delimits phases. Nested
+        # module calls and forwards recomputed during backward (activation
+        # checkpointing) run at depth > 1 and are ignored — they neither open a
+        # new step nor re-mark, so the step structure stays correct.
+        self._depth += 1
+        if self._depth > 1:
+            return
         if self._measure_flops and self._example_inputs is None and _inputs is not None:
             self._example_inputs = _inputs  # first batch, for one-shot FLOP count
         now = self.prof._now()
-        if self.prof._cur_active:
-            # The previous step was held open for post-step logging (loss is
-            # usually logged after optimizer.step). Close it now, attributing the
-            # gap since that step's optimizer to THIS step's data fetch.
+        if self._state == "pending":
+            # Previous step was held open for post-step logging; close it now and
+            # attribute the gap since its optimizer to this step's data fetch.
             self.prof.end_step()
+            self._comm_ns = 0
             if self._opt_end_ns is not None:
                 self.prof._record_data_ns(now - self._opt_end_ns)
-        self._comm_ns = 0
-        self.prof.begin_step()  # sets _last_mark = now
+            self.prof.begin_step()
+            self._state = "active"
+        elif self._state == "idle":
+            self._comm_ns = 0
+            self.prof.begin_step()
+            self._state = "active"
+        else:  # already "active": an additional forward in the same step
+            # (gradient accumulation / multiple forwards before optimizer.step).
+            # Attribute the elapsed region to backward and keep one step.
+            self.prof.mark(BACKWARD)
 
     def _on_forward(self, _module, _inputs, _output) -> None:
-        if self.prof._cur_active:
+        if self._measuring:
+            return
+        # Close the matching depth; only act when the outermost forward returns.
+        if self._depth > 0:
+            self._depth -= 1
+        if self._depth == 0 and self._state == "active":
             self.prof.mark(FORWARD)
 
     def _on_optimizer_step(self, orig_step, *args, **kwargs):
-        if not self.prof._cur_active:
+        # Defensive: a forward that raised could leave depth dangling.
+        self._depth = 0
+        if self._state != "active":
             return orig_step(*args, **kwargs)
         now = self.prof._now()
         # Everything since forward end is backward; carve out captured comm.
@@ -255,4 +286,5 @@ class AutoProfiler:
         # forward can be attributed to the next step's data fetch.
         self._opt_end_ns = end
         self._comm_ns = 0
+        self._state = "pending"
         return result
