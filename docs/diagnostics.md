@@ -57,6 +57,19 @@ Loss shows no meaningful downward trend over the analyzed window. **Fix:** verif
 the LR is non-trivial, the data/labels are correct, the loss is wired up, and the
 model has capacity / isn't frozen.
 
+## Efficiency budget
+
+### `EFFICIENCY.LOW_MFU` / `EFFICIENCY.RECOVERABLE`
+From the Training Efficiency Budget — a decomposition of attributed wall time
+into line items that sum exactly to wall. With a FLOPs+peak anchor it reports
+**MFU** (Model FLOPs Utilization) and fires `EFFICIENCY.LOW_MFU` when utilization
+is low; without an anchor it fires `EFFICIENCY.RECOVERABLE` when a recoverable
+line dominates. The finding names the **largest recoverable line** (compute
+overhead / data stall / communication / other) and its fix. **Fix:** start with
+the top line — AMP/`torch.compile` for compute overhead, more dataloader workers
+for data stall, comm overlap for communication. Anchor MFU with
+`AutoProfiler(measure_flops=True)` or `analyze --flops-per-step --peak-tflops`.
+
 ## Distributed (the headline)
 
 These read the multi-rank critical-path summary built by

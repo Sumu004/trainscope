@@ -69,6 +69,10 @@ class AutoProfiler:
         distributed: bool = False,
         flush_every: int = 200,
         config: dict | None = None,
+        measure_flops: bool = False,
+        flops_per_step: float | None = None,
+        peak_flops: float | None = None,
+        fwd_bwd_factor: float = 3.0,
     ):
         self.prof = Profiler(
             run_dir,
@@ -91,6 +95,14 @@ class AutoProfiler:
         self._opt_end_ns: int | None = None
         self._started = False
 
+        # MFU anchor (optional).
+        self._measure_flops = measure_flops
+        self._fwd_bwd_factor = fwd_bwd_factor
+        self._flops_per_step = flops_per_step
+        self._peak_flops = peak_flops
+        self._example_inputs = None
+        self._measuring = False
+
     # --- lifecycle --------------------------------------------------------
     def start(self) -> AutoProfiler:
         self.prof.start()
@@ -110,7 +122,29 @@ class AutoProfiler:
             self.prof.end_step()
         if self._started:
             self._unregister()
+        self._record_mfu_anchor()
         self.prof.finish()
+
+    def _record_mfu_anchor(self) -> None:
+        """Store FLOPs/step + device peak in run meta so `analyze` reports MFU."""
+        if self.prof._disabled:
+            return
+        flops = self._flops_per_step
+        if flops is None and self._measure_flops and self._example_inputs is not None:
+            from .hardware import measure_flops
+
+            self._measuring = True  # hooks are already removed, but be safe
+            flops = measure_flops(self.model, self._example_inputs, self._fwd_bwd_factor)
+            self._measuring = False
+        peak = self._peak_flops
+        if peak is None:
+            from .hardware import current_device_peak
+
+            _, peak = current_device_peak()
+        if flops:
+            self.prof.store.meta["flops_per_step"] = flops
+        if peak:
+            self.prof.store.meta["peak_flops"] = peak
 
     def __enter__(self) -> AutoProfiler:
         return self.start()
@@ -178,6 +212,10 @@ class AutoProfiler:
 
     # --- the captured state machine ---------------------------------------
     def _on_forward_pre(self, _module, _inputs) -> None:
+        if self._measuring:
+            return  # ignore the forward we run ourselves to count FLOPs
+        if self._measure_flops and self._example_inputs is None and _inputs is not None:
+            self._example_inputs = _inputs  # first batch, for one-shot FLOP count
         now = self.prof._now()
         if self.prof._cur_active:
             # The previous step was held open for post-step logging (loss is

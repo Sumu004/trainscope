@@ -30,6 +30,37 @@ Findings (1):
            pin_memory=True, prefetch, or move heavy transforms off the hot path.
 ```
 
+## The headline: a Training Efficiency Budget
+
+Most profilers hand you a list of findings. trainscope also gives you a single
+**accounting identity** — every second of training, decomposed into named line
+items that provably sum to your measured wall time, anchored to hardware peak
+(**MFU**, Model FLOPs Utilization):
+
+```
+Efficiency budget (wall-time decomposition):
+  MFU 38.0%  ·  useful compute 38.0% of 142.0s wall
+  useful_compute    ###########-------------------  38.0%   53.96s
+  compute_overhead  #####-------------------------  16.0%   22.72s (recoverable)
+  data_stall        ########----------------------  27.0%   38.34s (recoverable)
+  communication     #####-------------------------  19.0%   26.98s (recoverable)
+
+  [HIGH] MFU is 38% — 62% of wall is recoverable  (EFFICIENCY.LOW_MFU)
+        Biggest recoverable line: data_stall at 27% of wall.
+        -> Start with data_stall: raise num_workers, persistent_workers, prefetch.
+```
+
+Because the phase timeline partitions each step, the decomposition is **exact** —
+the line items sum to wall with no fudge factor, which makes the model
+falsifiable. And every recoverable line is *seconds you can win back*, so fixes
+rank themselves by payoff. FLOPs are counted automatically
+(`AutoProfiler(measure_flops=True)`); peak comes from a built-in GPU table or
+`--peak-tflops`.
+
+```bash
+python examples/efficiency_mfu.py && trainscope analyze runs/mfu
+```
+
 ## Why it's different
 
 One backbone, four lenses. Every analyzer reads the same `StepRecord` timeline,

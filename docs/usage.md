@@ -118,6 +118,28 @@ critical-path wall loss, the per-rank straggler table, and communication share.
 See `examples/ddp_gloo.py` for a complete runnable CPU example (real gloo
 multi-process all-reduce, no GPU needed).
 
+## Efficiency budget & MFU
+
+To anchor the wall-time budget to Model FLOPs Utilization, let `AutoProfiler`
+count FLOPs from the first batch:
+
+```python
+prof = AutoProfiler("runs/exp", model, optimizer, measure_flops=True)
+# peak is auto-detected on a recognized GPU; otherwise pass peak_flops=…
+```
+
+Then `trainscope analyze runs/exp` prints the budget and MFU. You can also supply
+the anchor at analysis time:
+
+```bash
+trainscope analyze runs/exp --flops-per-step 6.2e12 --peak-tflops 312
+```
+
+The decomposition (useful compute / overhead / data / communication / other)
+sums exactly to the attributed wall; recoverable lines are ranked by the seconds
+they'd win back. The peak table is approximate spec peak — override with
+`--peak-tflops` when precision matters.
+
 ## Exposed-communication analysis (from a kernel trace)
 
 Per-step phase timing can't tell you whether your all-reduce overlaps compute —

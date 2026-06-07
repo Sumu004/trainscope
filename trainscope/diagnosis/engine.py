@@ -13,6 +13,7 @@ from typing import Callable
 
 from ..analyzers.convergence import ConvergenceSummary
 from ..analyzers.distributed import DistributedSummary
+from ..analyzers.efficiency import EfficiencyBudget
 from ..analyzers.memory import MemorySummary
 from ..analyzers.pipeline import PipelineSummary
 from ..analyzers.timing import TimingSummary
@@ -43,6 +44,7 @@ class DiagnosisContext:
     distributed: DistributedSummary | None = None
     pipeline: PipelineSummary | None = None
     trace: TraceSummary | None = None
+    efficiency: EfficiencyBudget | None = None
 
 
 Rule = Callable[[DiagnosisContext], list[Finding]]

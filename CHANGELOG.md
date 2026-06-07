@@ -7,6 +7,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- **Training Efficiency Budget (MFU)** — a single accounting identity that
+  decomposes attributed wall time into named line items (useful compute /
+  compute overhead / data stall / communication / other) that sum **exactly** to
+  wall, anchored at the top by Model FLOPs Utilization. FLOPs are counted
+  automatically (`AutoProfiler(measure_flops=True)` via torch FlopCounterMode);
+  peak comes from a built-in GPU table (`hardware.peak_flops_for`) or
+  `--peak-tflops`. Recoverable line items are ranked by payoff; `EFFICIENCY.LOW_MFU`
+  (anchored) / `EFFICIENCY.RECOVERABLE` (no anchor) rules point at the biggest win.
+  CLI: `analyze --flops-per-step --peak-tflops`.
 - **Exposed-communication analysis** — ingest a `torch.profiler`/Kineto trace
   (`analyze --trace`, or auto-detected `trace.json[.gz]` in the run dir) and
   compute, via exact interval arithmetic, how much collective communication

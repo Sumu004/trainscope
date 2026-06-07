@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .analyzers.convergence import analyze_convergence
 from .analyzers.distributed import analyze_distributed, is_multirank, load_multirank
+from .analyzers.efficiency import analyze_efficiency
 from .analyzers.memory import analyze_memory
 from .analyzers.repro import diff_runs
 from .analyzers.timing import analyze_timing
@@ -15,6 +16,7 @@ from .analyzers.trace import analyze_trace_file
 from .core.store import RunStore
 from .diagnosis.engine import DiagnosisContext, run_diagnosis
 from .report.cli_report import (
+    render_budget,
     render_convergence,
     render_diff,
     render_distributed,
@@ -48,6 +50,7 @@ def cmd_analyze(args) -> int:
     timing = analyze_timing(store.steps, warmup=args.warmup) if store else None
     memory = analyze_memory(steps)
     convergence = analyze_convergence(steps)
+    efficiency = _resolve_efficiency(args, store, steps)
     findings = run_diagnosis(
         DiagnosisContext(
             timing=timing,
@@ -56,6 +59,7 @@ def cmd_analyze(args) -> int:
             steps=steps,
             distributed=distributed,
             trace=trace,
+            efficiency=efficiency,
         )
     )
 
@@ -68,9 +72,26 @@ def cmd_analyze(args) -> int:
         out += render_convergence(convergence)
     out += render_distributed(distributed)
     out += render_trace(trace)
+    out += render_budget(efficiency)
     out += render_findings(findings)
     print(out, end="")
     return 0
+
+
+def _resolve_efficiency(args, store, steps):
+    """Build the efficiency budget; FLOPs/peak from CLI flags or run meta."""
+    if not steps:
+        return None
+    meta = store.meta if store else {}
+    flops = getattr(args, "flops_per_step", None)
+    if flops is None:
+        flops = meta.get("flops_per_step")
+    peak = None
+    if getattr(args, "peak_tflops", None) is not None:
+        peak = args.peak_tflops * 1e12
+    elif meta.get("peak_flops"):
+        peak = meta.get("peak_flops")
+    return analyze_efficiency(steps, flops_per_step=flops, peak_flops=peak)
 
 
 def _resolve_trace(args):
@@ -116,6 +137,20 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Path to a torch.profiler/Kineto trace (.json/.json.gz) for "
         "exposed-communication analysis. Auto-detected in the run dir if present.",
+    )
+    p_analyze.add_argument(
+        "--flops-per-step",
+        type=float,
+        default=None,
+        dest="flops_per_step",
+        help="Training FLOPs per step, to anchor the efficiency budget / MFU.",
+    )
+    p_analyze.add_argument(
+        "--peak-tflops",
+        type=float,
+        default=None,
+        dest="peak_tflops",
+        help="Device peak throughput in TFLOP/s (overrides the built-in table).",
     )
     p_analyze.set_defaults(func=cmd_analyze)
 

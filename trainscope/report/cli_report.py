@@ -127,6 +127,29 @@ def render_pipeline(p) -> str:
     return "\n".join(lines) + "\n"
 
 
+def render_budget(b) -> str:
+    """Render an EfficiencyBudget — the wall-time accounting identity + MFU."""
+    if not b:
+        return ""
+    lines = ["", "Efficiency budget (wall-time decomposition):"]
+    if b.mfu is not None:
+        lines.append(
+            f"  MFU {b.mfu * 100:.1f}%  ·  useful compute {b.efficiency * 100:.1f}% "
+            f"of {b.wall:.2f}s wall"
+        )
+    else:
+        lines.append(f"  wall {b.wall:.2f}s over {b.n_steps} steps (MFU: n/a)")
+    for ln in b.lines:
+        if ln.seconds <= 0 and ln.name != "useful_compute":
+            continue
+        tag = "" if not ln.recoverable else " (recoverable)"
+        lines.append(
+            f"  {ln.name:<17} {_bar(ln.fraction)} {ln.fraction * 100:5.1f}%  "
+            f"{ln.seconds:7.2f}s{tag}"
+        )
+    return "\n".join(lines) + "\n"
+
+
 def render_trace(t) -> str:
     """Render a TraceSummary (exposed-communication analysis)."""
     if not t or not t.has_comm:

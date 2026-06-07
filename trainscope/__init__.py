@@ -13,6 +13,7 @@ from .analyzers.distributed import (
     analyze_distributed,
     load_multirank,
 )
+from .analyzers.efficiency import EfficiencyBudget, analyze_efficiency
 from .analyzers.memory import MemorySummary, analyze_memory
 from .analyzers.pipeline import PipelineSummary, analyze_pipeline
 from .analyzers.timing import TimingSummary, analyze_timing
@@ -21,6 +22,7 @@ from .auto import AutoProfiler
 from .core.events import StepRecord
 from .core.store import RunStore
 from .diagnosis.engine import DiagnosisContext, Finding, run_diagnosis
+from .hardware import measure_flops, peak_flops_for
 from .profiler import Profiler
 
 __version__ = "0.1.0"
@@ -44,6 +46,10 @@ __all__ = [
     "analyze_trace",
     "analyze_trace_file",
     "TraceSummary",
+    "analyze_efficiency",
+    "EfficiencyBudget",
+    "measure_flops",
+    "peak_flops_for",
     "run_diagnosis",
     "DiagnosisContext",
     "Finding",
