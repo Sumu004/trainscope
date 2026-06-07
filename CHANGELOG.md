@@ -7,6 +7,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- **Automatic instrumentation** — `AutoProfiler(run_dir, model, optimizer)`
+  captures the full phase timeline (data / forward / backward / optimizer, plus
+  synchronous `comm`) with **zero changes to the training loop**, via PyTorch
+  forward hooks + an `optimizer.step` wrapper + collective patching. The step is
+  held open for post-step `log(loss=…)`. All hooks/patches are restored on
+  `finish()`. Assumes one forward/backward per step (use `Profiler` for gradient
+  accumulation).
 - **Distributed vertical (headline)** — multi-rank critical-path analysis for
   data-parallel training. `Profiler(distributed=True)` records every rank to
   `run_dir/rank{k}/`; the analyzer aligns ranks on one timeline and computes

@@ -125,7 +125,26 @@ pip install -e ".[torch,lightning,huggingface]"   # framework integrations
 
 ## Quickstart
 
-**Manual loop:**
+**Automatic — zero changes to your loop (recommended):**
+
+```python
+from trainscope.auto import AutoProfiler
+
+prof = AutoProfiler("runs/exp1", model, optimizer, warmup=10)
+prof.start()
+for x, y in loader:                           # <- your loop, untouched
+    loss = loss_fn(model(x), y)
+    loss.backward()
+    optimizer.step(); optimizer.zero_grad()
+prof.finish()
+```
+
+`AutoProfiler` registers PyTorch hooks (forward, `optimizer.step`, and
+synchronous collectives) to attribute **data / forward / backward / optimizer /
+comm** automatically — no `mark()` calls anywhere in your training code. All
+hooks/patches are removed on `finish()`.
+
+**Manual loop** (full control, or gradient accumulation):
 
 ```python
 from trainscope import Profiler

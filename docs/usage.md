@@ -12,6 +12,34 @@ The core has **no runtime dependencies**. `torch`, `lightning`, and
 `transformers` are optional extras, imported lazily only when you use an
 integration or capture device memory.
 
+## Automatic instrumentation (zero loop changes)
+
+`AutoProfiler` captures the whole phase timeline without any `mark()` calls. Wrap
+the model + optimizer once and leave your loop exactly as it is:
+
+```python
+from trainscope.auto import AutoProfiler
+
+prof = AutoProfiler("runs/exp1", model, optimizer, warmup=10)
+prof.start()
+for x, y in loader:
+    loss = loss_fn(model(x), y)
+    loss.backward()
+    optimizer.step(); optimizer.zero_grad()
+    prof.log(loss=loss.item())   # optional — records the loss signal
+prof.finish()
+```
+
+It works by registering a forward pre-hook + forward hook on the model and
+wrapping `optimizer.step` (the step boundary). The gap between steps becomes
+`data`; forward/backward/optimizer are timed from the hooks. With
+`capture_comm=True` (default), **synchronous** `torch.distributed` collectives
+are timed into a `comm` phase; asynchronous (overlapped) collectives — e.g.
+inside `DistributedDataParallel` — are intentionally left inside backward, since
+their wall-cost is genuinely hidden there. For **distributed** runs pass
+`distributed=True` (records every rank). Limitation: one forward/backward per
+optimizer step; for gradient accumulation use the manual `Profiler` below.
+
 ## Instrument a manual loop
 
 ```python

@@ -16,6 +16,7 @@ from .analyzers.distributed import (
 from .analyzers.memory import MemorySummary, analyze_memory
 from .analyzers.pipeline import PipelineSummary, analyze_pipeline
 from .analyzers.timing import TimingSummary, analyze_timing
+from .auto import AutoProfiler
 from .core.events import StepRecord
 from .core.store import RunStore
 from .diagnosis.engine import DiagnosisContext, Finding, run_diagnosis
@@ -25,6 +26,7 @@ __version__ = "0.1.0"
 
 __all__ = [
     "Profiler",
+    "AutoProfiler",
     "RunStore",
     "StepRecord",
     "analyze_timing",
