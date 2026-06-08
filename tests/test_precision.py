@@ -6,9 +6,9 @@ not loose tolerances.
 
 import math
 
-from trainscope.analyzers.timing import _percentile, analyze_timing
-from trainscope.core.events import StepRecord
-from trainscope.profiler import Profiler
+from pytscope.analyzers.timing import _percentile, analyze_timing
+from pytscope.core.events import StepRecord
+from pytscope.profiler import Profiler
 
 
 class NsClock:
@@ -39,7 +39,7 @@ def test_phase_durations_are_exact_under_large_epoch(tmp_path):
     prof.end_step()
     prof.finish()
 
-    from trainscope.core.store import RunStore
+    from pytscope.core.store import RunStore
 
     rec = RunStore.load(tmp_path).steps[0]
     # 123 ns and 456 ns recovered exactly despite a ~9.8e15 ns epoch.
@@ -60,7 +60,7 @@ def test_gradient_accumulation_marks_add_exactly(tmp_path):
     prof.end_step()
     prof.finish()
 
-    from trainscope.core.store import RunStore
+    from pytscope.core.store import RunStore
 
     rec = RunStore.load(tmp_path).steps[0]
     assert rec.phases["backward"] == (1000 * 7) / 1e9  # exact: 7000 ns

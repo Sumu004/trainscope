@@ -3,9 +3,9 @@
 ## Install
 
 ```bash
-pip install trainscope                              # core (pure-stdlib)
-pip install "trainscope[torch,lightning,huggingface]"  # framework integrations
-pip install "trainscope[dev]"                       # tests + lint + build tooling
+pip install pytscope                              # core (pure-stdlib)
+pip install "pytscope[torch,lightning,huggingface]"  # framework integrations
+pip install "pytscope[dev]"                       # tests + lint + build tooling
 ```
 
 The core has **no runtime dependencies**. `torch`, `lightning`, and
@@ -18,7 +18,7 @@ integration or capture device memory.
 the model + optimizer once and leave your loop exactly as it is:
 
 ```python
-from trainscope.auto import AutoProfiler
+from pytscope.auto import AutoProfiler
 
 prof = AutoProfiler("runs/exp1", model, optimizer, warmup=10)
 prof.start()
@@ -43,7 +43,7 @@ optimizer step; for gradient accumulation use the manual `Profiler` below.
 ## Instrument a manual loop
 
 ```python
-from trainscope import Profiler
+from pytscope import Profiler
 
 prof = Profiler("runs/exp1", warmup=10)   # first 10 steps excluded from stats
 prof.start()
@@ -79,18 +79,18 @@ never corrupt the same run directory.
 
 ```python
 import lightning.pytorch as pl
-from trainscope.integrations.lightning import TrainScopeCallback
+from pytscope.integrations.lightning import PytscopeCallback
 
-trainer = pl.Trainer(callbacks=[TrainScopeCallback("runs/exp1")])
+trainer = pl.Trainer(callbacks=[PytscopeCallback("runs/exp1")])
 ```
 
 ## Hugging Face `Trainer` (one line)
 
 ```python
 from transformers import Trainer
-from trainscope.integrations.huggingface import TrainScopeCallback
+from pytscope.integrations.huggingface import PytscopeCallback
 
-trainer = Trainer(..., callbacks=[TrainScopeCallback("runs/exp1")])
+trainer = Trainer(..., callbacks=[PytscopeCallback("runs/exp1")])
 ```
 
 ## Distributed (data-parallel) runs
@@ -113,7 +113,7 @@ for batch in loader:
 prof.finish()
 ```
 
-Then `trainscope analyze runs/ddp` auto-detects the multi-rank layout and reports
+Then `pytscope analyze runs/ddp` auto-detects the multi-rank layout and reports
 critical-path wall loss, the per-rank straggler table, and communication share.
 See `examples/ddp_gloo.py` for a complete runnable CPU example (real gloo
 multi-process all-reduce, no GPU needed).
@@ -128,11 +128,11 @@ prof = AutoProfiler("runs/exp", model, optimizer, measure_flops=True)
 # peak is auto-detected on a recognized GPU; otherwise pass peak_flops=…
 ```
 
-Then `trainscope analyze runs/exp` prints the budget and MFU. You can also supply
+Then `pytscope analyze runs/exp` prints the budget and MFU. You can also supply
 the anchor at analysis time:
 
 ```bash
-trainscope analyze runs/exp --flops-per-step 6.2e12 --peak-tflops 312
+pytscope analyze runs/exp --flops-per-step 6.2e12 --peak-tflops 312
 ```
 
 The decomposition (useful compute / overhead / data / communication / other)
@@ -144,7 +144,7 @@ they'd win back. The peak table is approximate spec peak — override with
 
 Per-step phase timing can't tell you whether your all-reduce overlaps compute —
 that needs the kernel timeline. Capture a `torch.profiler` trace and hand it to
-trainscope:
+pytscope:
 
 ```python
 from torch.profiler import profile, ProfilerActivity
@@ -156,11 +156,11 @@ prof.export_chrome_trace("trace.json")
 ```
 
 ```bash
-trainscope analyze runs/job --trace trace.json
+pytscope analyze runs/job --trace trace.json
 # or drop the file in the run dir as trace.json[.gz] and it's auto-detected
 ```
 
-trainscope classifies NCCL collective kernels vs compute kernels and reports the
+pytscope classifies NCCL collective kernels vs compute kernels and reports the
 overlapped/exposed split and overlap efficiency. (Real overlap numbers require a
 multi-GPU trace; the interval math itself is exact and `examples/exposed_comm.py`
 demonstrates it with a synthetic trace.)
@@ -168,7 +168,7 @@ demonstrates it with a synthetic trace.)
 ## Analyze a run
 
 ```bash
-trainscope analyze runs/exp1
+pytscope analyze runs/exp1
 ```
 
 Prints the step-time breakdown, per-vertical summaries, and the ranked findings.
@@ -176,7 +176,7 @@ Prints the step-time breakdown, per-vertical summaries, and the ranked findings.
 ## Compare two runs (reproducibility / drift)
 
 ```bash
-trainscope diff runs/exp1 runs/exp2
+pytscope diff runs/exp1 runs/exp2
 ```
 
 Diffs provenance (Python/torch/CUDA/cuDNN, seeds, determinism flags), config,

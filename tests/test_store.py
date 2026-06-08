@@ -1,5 +1,5 @@
-from trainscope.core.events import StepRecord
-from trainscope.core.store import RunStore
+from pytscope.core.events import StepRecord
+from pytscope.core.store import RunStore
 
 
 def test_roundtrip(tmp_path):

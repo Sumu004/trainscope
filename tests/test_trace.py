@@ -7,7 +7,7 @@ import json
 
 import pytest
 
-from trainscope.analyzers.trace import (
+from pytscope.analyzers.trace import (
     analyze_trace,
     analyze_trace_file,
     load_chrome_trace,
@@ -15,7 +15,7 @@ from trainscope.analyzers.trace import (
     subtract_intervals,
     total_length,
 )
-from trainscope.diagnosis.engine import DiagnosisContext, run_diagnosis
+from pytscope.diagnosis.engine import DiagnosisContext, run_diagnosis
 
 
 def _ev(name, ts_us, dur_us, cat="kernel"):

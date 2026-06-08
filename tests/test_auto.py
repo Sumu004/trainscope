@@ -7,9 +7,9 @@ import pytest
 torch = pytest.importorskip("torch")
 import torch.nn as nn  # noqa: E402
 
-from trainscope.auto import AutoProfiler  # noqa: E402
-from trainscope.core.events import BACKWARD, FORWARD, OPTIMIZER  # noqa: E402
-from trainscope.core.store import RunStore  # noqa: E402
+from pytscope.auto import AutoProfiler  # noqa: E402
+from pytscope.core.events import BACKWARD, FORWARD, OPTIMIZER  # noqa: E402
+from pytscope.core.store import RunStore  # noqa: E402
 
 
 def _train(run_dir, steps=12, warmup=2, **kw):

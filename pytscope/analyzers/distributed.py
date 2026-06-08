@@ -20,7 +20,7 @@ This module aligns the per-rank step timelines and computes:
 - **Sync skew** — how far ahead the fastest ranks arrive at the barrier.
 
 Everything is pure-stdlib and numerically careful (``math.fsum``, robust
-medians from :mod:`trainscope.analyzers.stats`).
+medians from :mod:`pytscope.analyzers.stats`).
 """
 
 from __future__ import annotations

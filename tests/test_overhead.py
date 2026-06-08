@@ -7,7 +7,7 @@ a regression without flaking on slow CI runners.
 
 import time
 
-from trainscope.profiler import Profiler
+from pytscope.profiler import Profiler
 
 
 def _busy_clock():
@@ -61,7 +61,7 @@ def test_end_to_end_overhead_with_disk(tmp_path, capsys):
 
 def test_disabled_rank_is_near_zero_overhead(capsys, monkeypatch):
     """Non-zero DDP ranks must be a true no-op (no file, negligible cost)."""
-    monkeypatch.setattr("trainscope.profiler.get_rank", lambda: 3)
+    monkeypatch.setattr("pytscope.profiler.get_rank", lambda: 3)
     prof = Profiler("/tmp/_ts_should_not_exist", only_rank_zero=True)
     prof.start()
     n = 200_000

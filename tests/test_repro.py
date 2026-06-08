@@ -1,8 +1,8 @@
 """Reproducibility diff tests (vertical #4)."""
 
-from trainscope.analyzers.repro import diff_runs
-from trainscope.core.events import StepRecord
-from trainscope.core.store import RunStore
+from pytscope.analyzers.repro import diff_runs
+from pytscope.core.events import StepRecord
+from pytscope.core.store import RunStore
 
 
 def _store(name, losses, env=None, config=None):

@@ -1,7 +1,7 @@
-"""Framework shims. Imported lazily so trainscope core needs no heavy deps.
+"""Framework shims. Imported lazily so pytscope core needs no heavy deps.
 
 Import the specific module you need, e.g.::
 
-    from trainscope.integrations.lightning import TrainScopeCallback
-    from trainscope.integrations.huggingface import TrainScopeCallback
+    from pytscope.integrations.lightning import PytscopeCallback
+    from pytscope.integrations.huggingface import PytscopeCallback
 """

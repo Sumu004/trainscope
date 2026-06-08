@@ -1,4 +1,4 @@
-"""`trainscope` command line — post-hoc analysis of a recorded run."""
+"""`pytscope` command line — post-hoc analysis of a recorded run."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ from .report.cli_report import (
     set_color_mode,
 )
 
-# Trace files trainscope will auto-detect inside a run directory.
+# Trace files pytscope will auto-detect inside a run directory.
 _TRACE_NAMES = ("trace.json", "trace.json.gz", "kineto.json", "kineto.json.gz")
 
 
@@ -65,7 +65,7 @@ def cmd_analyze(args) -> int:
     )
 
     name = store.meta.get("name", "run") if store else "run"
-    print(f"trainscope — {name}  ({args.run_dir})\n")
+    print(f"pytscope — {name}  ({args.run_dir})\n")
     sections = []
     if timing is not None:
         sections.append(render_timing(timing, steps))
@@ -121,13 +121,13 @@ def cmd_diff(args) -> int:
     if not store_a.steps or not store_b.steps:
         print("Both run directories must contain steps.", file=sys.stderr)
         return 1
-    print(f"trainscope diff  ({args.run_a}  vs  {args.run_b})\n")
+    print(f"pytscope diff  ({args.run_a}  vs  {args.run_b})\n")
     print(render_diff(diff_runs(store_a, store_b)), end="")
     return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="trainscope", description=__doc__)
+    parser = argparse.ArgumentParser(prog="pytscope", description=__doc__)
     parser.add_argument(
         "--color",
         choices=("auto", "always", "never"),

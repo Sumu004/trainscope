@@ -5,9 +5,9 @@ import sys
 
 import pytest
 
-from trainscope import Profiler
-from trainscope.core.events import StepRecord
-from trainscope.core.store import RUN_META, RunStore
+from pytscope import Profiler
+from pytscope.core.events import StepRecord
+from pytscope.core.store import RUN_META, RunStore
 
 
 # --- crash resilience ------------------------------------------------------
@@ -44,7 +44,7 @@ def test_zero_duration_steps(tmp_path):
         with prof.step():
             prof.mark("forward")
     prof.finish()
-    from trainscope.analyzers.timing import analyze_timing
+    from pytscope.analyzers.timing import analyze_timing
 
     s = analyze_timing(RunStore.load(tmp_path).steps)
     assert s.n_steps == 5
@@ -63,7 +63,7 @@ def test_only_scalars_no_phases(tmp_path):
         for i in range(10):
             with prof.step():
                 prof.log(loss=1.0 / (i + 1))
-    from trainscope.analyzers.convergence import analyze_convergence
+    from pytscope.analyzers.convergence import analyze_convergence
 
     c = analyze_convergence(RunStore.load(tmp_path).steps)
     assert c.has_loss and c.final_loss is not None
@@ -92,7 +92,7 @@ def test_double_finish_is_idempotent(tmp_path):
 # --- CLI end-to-end via subprocess ----------------------------------------
 def _run_cli(*args):
     return subprocess.run(
-        [sys.executable, "-m", "trainscope.cli", *args],
+        [sys.executable, "-m", "pytscope.cli", *args],
         capture_output=True,
         text=True,
     )
@@ -138,7 +138,7 @@ def test_cli_no_command_fails(tmp_path):
 
 # --- diff robustness -------------------------------------------------------
 def test_diff_runs_of_different_lengths(tmp_path):
-    from trainscope.analyzers.repro import diff_runs
+    from pytscope.analyzers.repro import diff_runs
 
     a, b = tmp_path / "a", tmp_path / "b"
     _make_run(a, "a", [1.0, 0.5, 0.25, 0.1])

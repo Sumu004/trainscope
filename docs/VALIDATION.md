@@ -1,6 +1,6 @@
 # Validation status & protocol
 
-trainscope makes quantitative claims (straggler attribution, exposed
+pytscope makes quantitative claims (straggler attribution, exposed
 communication, MFU). This document states **exactly what is validated, where, and
 how** — and gives a reproducible protocol to validate the parts that need real
 multi-GPU hardware. Honesty about the boundary is the point: a number you can't
@@ -51,7 +51,7 @@ Run real NCCL DDP with one rank given extra work, mirroring
 ```bash
 torchrun --nproc_per_node=2 examples/ddp_gloo.py \
     --steps 200 --straggler-rank 1 --run-dir runs/gpu_straggler
-trainscope analyze runs/gpu_straggler
+pytscope analyze runs/gpu_straggler
 ```
 
 **Acceptance:** `DIST.STRAGGLER` fires naming **rank 1**, with `slowest_fraction`
@@ -95,7 +95,7 @@ fraction tracks the configuration in the expected direction.
 Run a transformer block of known FLOPs at a known precision on a known GPU:
 
 ```bash
-trainscope analyze runs/gpu_job   # FLOPs auto-counted; peak from the table
+pytscope analyze runs/gpu_job   # FLOPs auto-counted; peak from the table
 ```
 
 **Acceptance:** reported MFU is within ~15% of a hand-computed

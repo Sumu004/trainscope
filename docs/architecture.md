@@ -1,8 +1,8 @@
 # Architecture
 
-trainscope is built around a single idea: **put every signal on one aligned
+pytscope is built around a single idea: **put every signal on one aligned
 per-step timeline, then reason across signals.** Standard tools profile one axis
-(timing, or gradients, or logged scalars). Because trainscope's analyzers all
+(timing, or gradients, or logged scalars). Because pytscope's analyzers all
 read the same `StepRecord` stream, the diagnosis engine can correlate events
 that no single-axis tool can see together.
 

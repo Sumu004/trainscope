@@ -27,10 +27,10 @@ zero cost. `kaggle_2xT4.ipynb` in this directory is ready to run as-is.
 6. **Run all cells top to bottom** (Run → Run All, or step through with
    Shift+Enter). Total runtime is roughly **10–20 minutes**:
    - Cell 0 confirms 2 GPUs are visible (fails fast with a clear message if not).
-   - Cell 1 clones `Sumu004/trainscope` and installs it with the `torch` extra.
+   - Cell 1 clones `Sumu004/pytscope` and installs it with the `torch` extra.
    - Cells 2–3 run **Experiment 1** (straggler attribution) via
      `torchrun --standalone --nproc_per_node=2 examples/ddp_gloo.py` on real
-     NCCL, then `trainscope analyze` on the result.
+     NCCL, then `pytscope analyze` on the result.
    - Cells 4–7 write a small DDP probe script and run **Experiment 2**
      (exposed communication) twice — once with a tiny per-GPU batch (bad
      overlap) and once with a large one (good overlap) — capturing a real

@@ -1,10 +1,10 @@
 """Zero-instrumentation profiling: wrap once, leave the loop untouched.
 
     pip install -e ".[torch]"
-    python examples/auto.py && trainscope analyze runs/auto
+    python examples/auto.py && pytscope analyze runs/auto
 
 Compare this to examples/manual_loop.py — same telemetry, but here the training
-loop has *no* trainscope calls at all. AutoProfiler registers PyTorch hooks to
+loop has *no* pytscope calls at all. AutoProfiler registers PyTorch hooks to
 attribute data / forward / backward / optimizer automatically.
 """
 
@@ -15,7 +15,7 @@ import shutil
 import torch
 import torch.nn as nn
 
-from trainscope.auto import AutoProfiler
+from pytscope.auto import AutoProfiler
 
 
 def main() -> None:
@@ -36,7 +36,7 @@ def main() -> None:
         opt.step()
         prof.log(loss=loss.item())  # optional: only to record the loss signal
     prof.finish()
-    print(f"Done on {dev}. Run:  trainscope analyze runs/auto")
+    print(f"Done on {dev}. Run:  pytscope analyze runs/auto")
 
 
 if __name__ == "__main__":

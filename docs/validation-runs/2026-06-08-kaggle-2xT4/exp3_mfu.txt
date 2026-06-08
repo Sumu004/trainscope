@@ -1,4 +1,4 @@
-trainscope — run  (runs/exp3_mfu)
+pytscope — run  (runs/exp3_mfu)
 
 Run summary — 55 steps, 25.6 ms/step, 39.0 steps/s
   step time: median 24.8 ms · p95 29.7 ms · CV 0.08

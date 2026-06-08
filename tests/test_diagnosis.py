@@ -1,6 +1,6 @@
-from trainscope.analyzers.timing import analyze_timing
-from trainscope.core.events import StepRecord
-from trainscope.diagnosis.engine import DiagnosisContext, run_diagnosis
+from pytscope.analyzers.timing import analyze_timing
+from pytscope.core.events import StepRecord
+from pytscope.diagnosis.engine import DiagnosisContext, run_diagnosis
 
 
 def _diagnose(phases, n=20):

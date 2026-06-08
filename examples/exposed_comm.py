@@ -4,13 +4,13 @@ Real NCCL overlap numbers come from a multi-GPU ``torch.profiler`` trace. To mak
 the analysis runnable anywhere, this writes a small **synthetic** Kineto-style
 trace with a known compute/communication overlap, then analyzes it::
 
-    python examples/exposed_comm.py && trainscope analyze runs/trace_demo
+    python examples/exposed_comm.py && pytscope analyze runs/trace_demo
 
 The synthetic run models 6 steps. Each step: a backward compute kernel of 8 ms
 and an all-reduce of 6 ms that overlaps the last 4 ms of backward — so 2 ms per
-step (12 ms total) is exposed. trainscope should report ~67% overlap efficiency
+step (12 ms total) is exposed. pytscope should report ~67% overlap efficiency
 and an exposed-communication finding (~20% of wall). With a real trace, pass it
-via ``trainscope analyze <run> --trace path/to/trace.json``.
+via ``pytscope analyze <run> --trace path/to/trace.json``.
 """
 
 from __future__ import annotations
@@ -54,7 +54,7 @@ def main() -> None:
 
     (run_dir / "trace.json").write_text(json.dumps({"traceEvents": events}))
     print(f"Wrote synthetic trace to {run_dir / 'trace.json'}")
-    print(f"Now run:  trainscope analyze {run_dir}")
+    print(f"Now run:  pytscope analyze {run_dir}")
 
 
 if __name__ == "__main__":

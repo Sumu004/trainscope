@@ -1,4 +1,4 @@
-trainscope — run  (runs/exp2_good)
+pytscope — run  (runs/exp2_good)
 
 No steps recorded.
 

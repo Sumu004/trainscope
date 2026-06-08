@@ -1,12 +1,12 @@
 """The Training Efficiency Budget — one number (MFU) + where the rest of wall goes.
 
     pip install -e ".[torch]"
-    python examples/efficiency_mfu.py && trainscope analyze runs/mfu
+    python examples/efficiency_mfu.py && pytscope analyze runs/mfu
 
 `AutoProfiler(measure_flops=True)` auto-counts the model's FLOPs from the first
 batch. On a recognized GPU the hardware peak is looked up automatically; on other
 devices pass a peak (here we set one explicitly so the MFU anchor is defined off
-a real GPU). `trainscope analyze` then prints the budget: useful compute (the
+a real GPU). `pytscope analyze` then prints the budget: useful compute (the
 FLOPs at peak) vs the recoverable line items that sum to your wall time.
 """
 
@@ -17,7 +17,7 @@ import shutil
 import torch
 import torch.nn as nn
 
-from trainscope.auto import AutoProfiler
+from pytscope.auto import AutoProfiler
 
 
 def main() -> None:
@@ -59,7 +59,7 @@ def main() -> None:
         opt.step()
         prof.log(loss=loss.item())
     prof.finish()
-    print(f"Done on {dev}. Run:  trainscope analyze runs/mfu")
+    print(f"Done on {dev}. Run:  pytscope analyze runs/mfu")
 
 
 if __name__ == "__main__":

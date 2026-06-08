@@ -3,15 +3,15 @@
 import json
 import math
 
-from trainscope.core.events import StepRecord
-from trainscope.core.store import STEPS_FILE, RunStore
-from trainscope.integrations.lightning import TrainScopeCallback
-from trainscope.profiler import Profiler
+from pytscope.core.events import StepRecord
+from pytscope.core.store import STEPS_FILE, RunStore
+from pytscope.integrations.lightning import PytscopeCallback
+from pytscope.profiler import Profiler
 
 
 # --- #5 DDP rank guard -----------------------------------------------------
 def test_nonzero_rank_writes_nothing(tmp_path, monkeypatch):
-    monkeypatch.setattr("trainscope.profiler.get_rank", lambda: 1)
+    monkeypatch.setattr("pytscope.profiler.get_rank", lambda: 1)
     prof = Profiler(tmp_path / "run", only_rank_zero=True)
     prof.start()
     for _ in prof.iter_data([1, 2, 3]):  # must still yield batches
@@ -23,7 +23,7 @@ def test_nonzero_rank_writes_nothing(tmp_path, monkeypatch):
 
 
 def test_nonzero_rank_namespaced_dir(tmp_path, monkeypatch):
-    monkeypatch.setattr("trainscope.profiler.get_rank", lambda: 2)
+    monkeypatch.setattr("pytscope.profiler.get_rank", lambda: 2)
     base = tmp_path / "run"
     prof = Profiler(base, only_rank_zero=False)
     assert str(prof.store.run_dir).endswith("_rank2")
@@ -75,7 +75,7 @@ class _FakeLoss:
 
 
 def test_lightning_manual_opt_labels_compute(tmp_path):
-    cb = TrainScopeCallback(tmp_path, collect_memory=False)
+    cb = PytscopeCallback(tmp_path, collect_memory=False)
     cb.on_train_start(None, None)
     cb.on_train_batch_start(None, None, None, 0)
     # NOTE: no on_before_backward (manual optimization)
@@ -88,7 +88,7 @@ def test_lightning_manual_opt_labels_compute(tmp_path):
 
 
 def test_lightning_automatic_opt_splits_phases(tmp_path):
-    cb = TrainScopeCallback(tmp_path, collect_memory=False)
+    cb = PytscopeCallback(tmp_path, collect_memory=False)
     cb.on_train_start(None, None)
     cb.on_train_batch_start(None, None, None, 0)
     cb.on_before_backward(None, None, _FakeLoss())

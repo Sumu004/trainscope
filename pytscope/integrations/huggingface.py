@@ -2,8 +2,8 @@
 
 Usage::
 
-    from trainscope.integrations.huggingface import TrainScopeCallback
-    trainer = Trainer(..., callbacks=[TrainScopeCallback("runs/exp1")])
+    from pytscope.integrations.huggingface import PytscopeCallback
+    trainer = Trainer(..., callbacks=[PytscopeCallback("runs/exp1")])
 
 The Trainer callback API does not expose the forward/backward boundary, so the
 HF integration attributes time at a coarser grain: ``data`` (between steps) and
@@ -22,7 +22,7 @@ except Exception:  # pragma: no cover - exercised only with transformers install
     TrainerCallback = object  # type: ignore
 
 
-class TrainScopeCallback(TrainerCallback):  # type: ignore[misc]
+class PytscopeCallback(TrainerCallback):  # type: ignore[misc]
     def __init__(self, run_dir, name: str = "hf-run", **profiler_kwargs):
         self.profiler = Profiler(run_dir, name=name, **profiler_kwargs)
         self._last_step_end = None

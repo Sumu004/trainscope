@@ -1,7 +1,7 @@
 """End-to-end proof on a REAL distributed system (CPU gloo, multi-process).
 
 Spawns actual OS processes that form a torch.distributed group and do real
-gradient all-reduce, then checks trainscope identifies the injected straggler
+gradient all-reduce, then checks pytscope identifies the injected straggler
 from the multi-rank critical path. Skipped if torch is unavailable.
 """
 
@@ -11,7 +11,7 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from trainscope.analyzers.distributed import (  # noqa: E402
+from pytscope.analyzers.distributed import (  # noqa: E402
     analyze_distributed,
     load_multirank,
 )
@@ -27,7 +27,7 @@ def _worker(rank, world_size, steps, straggler_rank, run_dir):
     os.environ["MASTER_PORT"] = "29577"
     os.environ["RANK"] = str(rank)
     os.environ["WORLD_SIZE"] = str(world_size)
-    from trainscope import Profiler
+    from pytscope import Profiler
 
     dist.init_process_group("gloo", rank=rank, world_size=world_size)
     torch.manual_seed(rank)

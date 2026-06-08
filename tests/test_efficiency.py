@@ -6,10 +6,10 @@ import math
 
 import pytest
 
-from trainscope.analyzers.efficiency import analyze_efficiency
-from trainscope.core.events import StepRecord
-from trainscope.diagnosis.engine import DiagnosisContext, run_diagnosis
-from trainscope.hardware import peak_flops_for
+from pytscope.analyzers.efficiency import analyze_efficiency
+from pytscope.core.events import StepRecord
+from pytscope.diagnosis.engine import DiagnosisContext, run_diagnosis
+from pytscope.hardware import peak_flops_for
 
 
 def _steps(n=10, **phase_secs):
@@ -107,7 +107,7 @@ def test_measure_flops_real_torch():
     torch = pytest.importorskip("torch")
     import torch.nn as nn
 
-    from trainscope.hardware import measure_flops
+    from pytscope.hardware import measure_flops
 
     model = nn.Linear(512, 512)
     x = torch.randn(64, 512)

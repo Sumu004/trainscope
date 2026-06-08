@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "trainscope"
+name = "pytscope"
 dynamic = ["version"]
 description = "An intelligence layer for ML training: live profiling + post-training diagnosis."
 readme = "README.md"
@@ -46,26 +46,26 @@ huggingface = ["transformers>=4.30"]
 dev = ["pytest>=7", "pytest-cov", "ruff>=0.4", "build", "twine"]
 
 [project.scripts]
-trainscope = "trainscope.cli:main"
+pytscope = "pytscope.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/Sumu004/trainscope"
-Repository = "https://github.com/Sumu004/trainscope"
-Documentation = "https://github.com/Sumu004/trainscope/tree/main/docs"
-Issues = "https://github.com/Sumu004/trainscope/issues"
-Changelog = "https://github.com/Sumu004/trainscope/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/Sumu004/pytscope"
+Repository = "https://github.com/Sumu004/pytscope"
+Documentation = "https://github.com/Sumu004/pytscope/tree/main/docs"
+Issues = "https://github.com/Sumu004/pytscope/issues"
+Changelog = "https://github.com/Sumu004/pytscope/blob/main/CHANGELOG.md"
 
-# Single-source the version from the package itself (trainscope.__version__),
+# Single-source the version from the package itself (pytscope.__version__),
 # so a release is one edit in one file.
 [tool.hatch.version]
-path = "trainscope/__init__.py"
+path = "pytscope/__init__.py"
 
 [tool.hatch.build.targets.wheel]
-packages = ["trainscope"]
+packages = ["pytscope"]
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "/trainscope",
+    "/pytscope",
     "/tests",
     "/examples",
     "/docs",

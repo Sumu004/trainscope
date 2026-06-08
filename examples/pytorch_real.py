@@ -6,7 +6,7 @@ real GPU/MPS memory. Runs on CUDA, Apple MPS, or CPU automatically.
 
     python examples/pytorch_real.py            # honest, healthy run
     python examples/pytorch_real.py --leak     # retains activations -> growth
-    trainscope analyze runs/pytorch
+    pytscope analyze runs/pytorch
 
 Requires: pip install -e ".[torch]"
 
@@ -21,7 +21,7 @@ import argparse
 import torch
 import torch.nn as nn
 
-from trainscope import Profiler
+from pytscope import Profiler
 
 
 def pick_device() -> str:
@@ -95,7 +95,7 @@ def main():
 
     prof.finish()
     print(f"Trained on {device}. Recorded runs/pytorch — now run:")
-    print("  trainscope analyze runs/pytorch")
+    print("  pytscope analyze runs/pytorch")
 
 
 if __name__ == "__main__":

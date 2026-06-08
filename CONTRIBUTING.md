@@ -1,6 +1,6 @@
-# Contributing to trainscope
+# Contributing to pytscope
 
-First off — thank you for taking the time to contribute! 🎉 trainscope is an
+First off — thank you for taking the time to contribute! 🎉 pytscope is an
 intelligence layer for ML training, and it gets better the more eyes are on the
 numbers. This guide explains how to propose changes.
 
@@ -36,8 +36,8 @@ don't both build the same thing twice.
 Requires Python 3.9+.
 
 ```bash
-git clone https://github.com/Sumu004/trainscope.git
-cd trainscope
+git clone https://github.com/Sumu004/pytscope.git
+cd pytscope
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"          # core + test/lint tooling
 # optional, for the framework integrations / real examples:
@@ -68,7 +68,7 @@ deps (torch, etc.) optional and import them lazily inside functions.
 ## Project layout
 
 ```
-trainscope/
+pytscope/
   core/          # event schema, run store, provenance, rank detection
   collectors/    # memory snapshot
   profiler.py    # the live Profiler (timing engine)
@@ -138,7 +138,7 @@ We squash-merge, so your PR title becomes the commit — make it descriptive.
 
 ## Reporting bugs & requesting features
 
-Use the issue templates. For bugs, include: trainscope version, Python version,
+Use the issue templates. For bugs, include: pytscope version, Python version,
 OS/accelerator, a minimal repro, and the actual vs expected finding/output. A
 wrong or noisy finding **is** a bug — please report it with the run details.
 

@@ -1,7 +1,7 @@
 """Cross-signal rules — the part no single-axis tool can do.
 
 HTA sees only timing; Cockpit only gradients; W&B only logged scalars. Because
-trainscope captures timing + memory + convergence on ONE aligned per-step
+pytscope captures timing + memory + convergence on ONE aligned per-step
 timeline, a rule can find a step that is anomalous across *several* axes at once
 and report the correlation — far stronger evidence than any one signal alone.
 """

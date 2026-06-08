@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import random
 
-from trainscope.analyzers.distributed import (
+from pytscope.analyzers.distributed import (
     analyze_distributed,
     is_multirank,
     load_multirank,
 )
-from trainscope.core.events import StepRecord
-from trainscope.core.store import RunStore
-from trainscope.diagnosis.engine import DiagnosisContext, run_diagnosis
+from pytscope.core.events import StepRecord
+from pytscope.core.store import RunStore
+from pytscope.diagnosis.engine import DiagnosisContext, run_diagnosis
 
 
 def _make_run(tmp_path, world_size, steps, compute_fn, comm=0.003, seed=0):

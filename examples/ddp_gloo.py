@@ -5,17 +5,17 @@ Two launch modes, same code:
 * **Laptop, no GPU** — spawns N processes on the CPU ``gloo`` backend:
 
       python examples/ddp_gloo.py --ranks 4 --steps 80 --straggler-rank 2
-      trainscope analyze runs/ddp_gloo
+      pytscope analyze runs/ddp_gloo
 
 * **Real multi-GPU** — launched by ``torchrun``, uses the ``nccl`` backend on
   CUDA (this is the path the validation protocol in docs/VALIDATION.md uses):
 
       torchrun --nproc_per_node=2 examples/ddp_gloo.py --steps 200 --straggler-rank 1
-      trainscope analyze runs/ddp_gloo
+      pytscope analyze runs/ddp_gloo
 
 Each rank records its own timeline; the gradient all-reduce is wrapped in
 ``prof.comm()`` so the analyzer separates communication from compute. Rank
-``--straggler-rank`` does extra compute each step, so trainscope's multi-rank
+``--straggler-rank`` does extra compute each step, so pytscope's multi-rank
 critical-path analysis should identify it as a persistent straggler.
 """
 
@@ -31,7 +31,7 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 import torch.nn as nn
 
-from trainscope import Profiler
+from pytscope import Profiler
 
 
 def _run_rank(
@@ -86,7 +86,7 @@ def _run_rank(
     dist.destroy_process_group()
     if rank == 0:
         print(f"Done ({backend}, {world_size} ranks) → {args.run_dir}")
-        print(f"Now run:  trainscope analyze {args.run_dir}")
+        print(f"Now run:  pytscope analyze {args.run_dir}")
 
 
 def _spawn_worker(rank: int, args) -> None:

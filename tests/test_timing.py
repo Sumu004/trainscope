@@ -1,5 +1,5 @@
-from trainscope.analyzers.timing import analyze_timing
-from trainscope.core.events import StepRecord
+from pytscope.analyzers.timing import analyze_timing
+from pytscope.core.events import StepRecord
 
 
 def _steps(n, phases):

@@ -1,4 +1,4 @@
-"""trainscope — an intelligence layer for ML training.
+"""pytscope — an intelligence layer for ML training.
 
 One telemetry backbone (aligned per-step records) feeds pluggable analyzers
 (timing today; memory, convergence, reproducibility next) and a diagnosis engine

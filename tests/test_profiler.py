@@ -1,5 +1,5 @@
-from trainscope.core.store import RunStore
-from trainscope.profiler import Profiler
+from pytscope.core.store import RunStore
+from pytscope.profiler import Profiler
 
 
 class FakeClock:

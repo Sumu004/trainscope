@@ -2,8 +2,8 @@
 
 Usage::
 
-    from trainscope.integrations.lightning import TrainScopeCallback
-    trainer = pl.Trainer(callbacks=[TrainScopeCallback("runs/exp1")])
+    from pytscope.integrations.lightning import PytscopeCallback
+    trainer = pl.Trainer(callbacks=[PytscopeCallback("runs/exp1")])
 
 Lightning's hooks let us split the step into data / forward / backward /
 optimizer cleanly:
@@ -28,7 +28,7 @@ except Exception:  # pragma: no cover - exercised only with lightning installed
         Callback = object  # type: ignore
 
 
-class TrainScopeCallback(Callback):  # type: ignore[misc]
+class PytscopeCallback(Callback):  # type: ignore[misc]
     def __init__(
         self,
         run_dir,

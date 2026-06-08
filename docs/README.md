@@ -1,4 +1,4 @@
-# trainscope documentation
+# pytscope documentation
 
 An intelligence layer for ML training — capture timing, memory, convergence, and
 provenance on one aligned per-step timeline, then turn the raw numbers into

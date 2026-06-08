@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from trainscope.analyzers.pipeline import analyze_pipeline, gpipe_schedule
-from trainscope.diagnosis.engine import DiagnosisContext, run_diagnosis
+from pytscope.analyzers.pipeline import analyze_pipeline, gpipe_schedule
+from pytscope.diagnosis.engine import DiagnosisContext, run_diagnosis
 
 
 @pytest.mark.parametrize("p", [2, 4, 8])

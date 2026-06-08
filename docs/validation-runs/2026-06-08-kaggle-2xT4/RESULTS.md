@@ -7,7 +7,7 @@ artifacts — raw console captures
 ([`exp1_straggler.txt`](exp1_straggler.txt), [`exp2_bad_overlap.txt`](exp2_bad_overlap.txt),
 [`exp2_good_overlap.txt`](exp2_good_overlap.txt), [`exp3_mfu.txt`](exp3_mfu.txt))
 and the underlying `run.json`/`trace.json` provenance files under [`runs/`](runs/),
-exactly as `trainscope analyze` produced them — nothing here is hand-typed.
+exactly as `pytscope analyze` produced them — nothing here is hand-typed.
 
 **Hardware (from `run.json.environment`):** 2× Tesla T4 (`gpu_count: 2`), torch
 2.10.0+cu128, CUDA 12.8, NCCL backend, `torchrun --standalone --nproc_per_node=2`.
@@ -15,7 +15,7 @@ Kaggle's T4 pairs are PCIe-connected (no NVLink).
 
 ## Experiment 1 — Straggler attribution: ✅ PASS, exactly as specified
 
-Known answer was rank 1 (injected extra compute each step). trainscope on real
+Known answer was rank 1 (injected extra compute each step). pytscope on real
 NCCL DDP reported:
 
 ```
@@ -90,7 +90,7 @@ unset so `AutoProfiler` looks the device up in `hardware._PEAK_FLOPS` (T4 ⇒
 65 TFLOP/s) instead of hard-coding an A100 anchor that's wrong for whatever GPU
 the demo actually lands on.
 
-Re-running `python examples/efficiency_mfu.py && trainscope analyze runs/mfu`
+Re-running `python examples/efficiency_mfu.py && pytscope analyze runs/mfu`
 on the fixed example (next free Kaggle session) will produce a real
 `Done on cuda` MFU reading anchored to the T4's true peak — that result should
 be appended here to close out Experiment 3. The acceptance check (`MFU` within

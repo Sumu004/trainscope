@@ -1,12 +1,12 @@
 """Automatic instrumentation — profiling with zero changes to your loop.
 
-The manual :class:`~trainscope.profiler.Profiler` asks you to call ``mark()`` at
+The manual :class:`~pytscope.profiler.Profiler` asks you to call ``mark()`` at
 each phase boundary. ``AutoProfiler`` removes that: it registers PyTorch hooks so
 the phase timeline (data / forward / backward / optimizer, plus synchronous
 communication) is captured automatically. You wrap the model + optimizer once and
 leave your training loop **exactly as it is**::
 
-    from trainscope.auto import AutoProfiler
+    from pytscope.auto import AutoProfiler
 
     prof = AutoProfiler("runs/exp", model, optimizer, warmup=5)
     prof.start()
@@ -16,7 +16,7 @@ leave your training loop **exactly as it is**::
         optimizer.step()
         optimizer.zero_grad()
     prof.finish()
-    # trainscope analyze runs/exp
+    # pytscope analyze runs/exp
 
 How it works (the step boundary is ``optimizer.step``):
 

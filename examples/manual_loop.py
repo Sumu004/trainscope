@@ -1,12 +1,12 @@
 """Runnable demo with no ML deps — simulates a dataloader-bound training loop.
 
 python examples/manual_loop.py
-trainscope analyze runs/demo
+pytscope analyze runs/demo
 """
 
 import time
 
-from trainscope import Profiler
+from pytscope import Profiler
 
 
 def fake_dataloader(n):
@@ -27,7 +27,7 @@ def main():
             time.sleep(0.001)  # "optimizer"
             prof.mark("optimizer")
     prof.finish()
-    print("Recorded run to runs/demo — now run:  trainscope analyze runs/demo")
+    print("Recorded run to runs/demo — now run:  pytscope analyze runs/demo")
 
 
 if __name__ == "__main__":

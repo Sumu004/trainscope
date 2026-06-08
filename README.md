@@ -1,12 +1,12 @@
 <div align="center">
 
-# trainscope
+# pytscope
 
 **An intelligence layer for ML training — go beyond collecting metrics to *explaining* them.**
 
-[![CI](https://github.com/Sumu004/trainscope/actions/workflows/ci.yml/badge.svg)](https://github.com/Sumu004/trainscope/actions/workflows/ci.yml)
-[![PyPI version](https://img.shields.io/pypi/v/trainscope.svg)](https://pypi.org/project/trainscope/)
-[![Python versions](https://img.shields.io/pypi/pyversions/trainscope.svg)](https://pypi.org/project/trainscope/)
+[![CI](https://github.com/Sumu004/pytscope/actions/workflows/ci.yml/badge.svg)](https://github.com/Sumu004/pytscope/actions/workflows/ci.yml)
+[![PyPI version](https://img.shields.io/pypi/v/pytscope.svg)](https://pypi.org/project/pytscope/)
+[![Python versions](https://img.shields.io/pypi/pyversions/pytscope.svg)](https://pypi.org/project/pytscope/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 [Quickstart](#quickstart) · [Why it's different](#why-its-different) ·
@@ -15,7 +15,7 @@
 </div>
 
 Standard profilers hand you a 50 MB trace and leave the "so what do I change?"
-to you. `trainscope` captures **timing, memory, convergence signals, and
+to you. `pytscope` captures **timing, memory, convergence signals, and
 provenance on one aligned per-step timeline**, then runs a diagnosis engine that
 turns the raw numbers into ranked, actionable findings.
 
@@ -41,7 +41,7 @@ through every section, gradient meter bar, and severity tag.
 
 ## The headline: a Training Efficiency Budget
 
-Most profilers hand you a list of findings. trainscope also gives you a single
+Most profilers hand you a list of findings. pytscope also gives you a single
 **accounting identity** — every second of training, decomposed into named line
 items that provably sum to your measured wall time, anchored to hardware peak
 (**MFU**, Model FLOPs Utilization):
@@ -67,7 +67,7 @@ rank themselves by payoff. FLOPs are counted automatically
 `--peak-tflops`.
 
 ```bash
-python examples/efficiency_mfu.py && trainscope analyze runs/mfu
+python examples/efficiency_mfu.py && pytscope analyze runs/mfu
 ```
 
 ## Why it's different
@@ -100,16 +100,16 @@ The core is **pure-stdlib** — no heavy deps to profile your training.
            the update blew up (LR too high / bad batch).
 ```
 
-HTA sees only timing; Cockpit only gradients; W&B only logged scalars. trainscope
+HTA sees only timing; Cockpit only gradients; W&B only logged scalars. pytscope
 sees them **on one clock** and reports the correlation. Reproduce it with
-`python examples/cross_signal.py && trainscope analyze runs/cross`.
+`python examples/cross_signal.py && pytscope analyze runs/cross`.
 
 ### Distributed: the straggler no single-rank profiler can name
 
 In synchronous data-parallel training every rank waits at the gradient
 all-reduce for the **slowest** rank. That idle time is pure waste, and it's
 invisible to any single-rank profiler — you only see it by putting all ranks on
-one timeline. trainscope does, and uses a **statistical persistence test** (not a
+one timeline. pytscope does, and uses a **statistical persistence test** (not a
 threshold) to tell a genuine bad node from noise:
 
 ```
@@ -134,10 +134,10 @@ with genuine multi-process gloo all-reduce:
 ```bash
 pip install -e ".[torch]"
 python examples/ddp_gloo.py --ranks 4 --straggler-rank 2
-trainscope analyze runs/ddp_gloo
+pytscope analyze runs/ddp_gloo
 ```
 
-For **pipeline parallelism**, trainscope measures the achieved bubble and compares
+For **pipeline parallelism**, pytscope measures the achieved bubble and compares
 it to the inherent GPipe minimum `(p-1)/(m+p-1)`, so it flags only the *excess*
 bubble you can actually fix — not the bubble that's just the cost of your `p`
 and `m`.
@@ -146,7 +146,7 @@ and `m`.
 
 Gradient all-reduce *can* run concurrently with backward compute — the part that
 overlaps is free, the part that doesn't is **exposed** and sits on the critical
-path. trainscope ingests a `torch.profiler`/Kineto trace and computes the split
+path. pytscope ingests a `torch.profiler`/Kineto trace and computes the split
 exactly (interval arithmetic over the kernel timeline):
 
 ```
@@ -161,8 +161,8 @@ exactly (interval arithmetic over the kernel timeline):
 ```
 
 ```bash
-trainscope analyze runs/job --trace trace.json   # from torch.profiler
-python examples/exposed_comm.py && trainscope analyze runs/trace_demo  # no GPU
+pytscope analyze runs/job --trace trace.json   # from torch.profiler
+python examples/exposed_comm.py && pytscope analyze runs/trace_demo  # no GPU
 ```
 
 ---
@@ -193,7 +193,7 @@ pip install -e ".[torch,lightning,huggingface]"   # framework integrations
 **Automatic — zero changes to your loop (recommended):**
 
 ```python
-from trainscope.auto import AutoProfiler
+from pytscope.auto import AutoProfiler
 
 prof = AutoProfiler("runs/exp1", model, optimizer, warmup=10)
 prof.start()
@@ -212,7 +212,7 @@ hooks/patches are removed on `finish()`.
 **Manual loop** (full control, or gradient accumulation):
 
 ```python
-from trainscope import Profiler
+from pytscope import Profiler
 
 prof = Profiler("runs/exp1", warmup=10)
 prof.start()
@@ -228,22 +228,22 @@ prof.finish()
 **Lightning (one line):**
 
 ```python
-from trainscope.integrations.lightning import TrainScopeCallback
-trainer = pl.Trainer(callbacks=[TrainScopeCallback("runs/exp1")])
+from pytscope.integrations.lightning import PytscopeCallback
+trainer = pl.Trainer(callbacks=[PytscopeCallback("runs/exp1")])
 ```
 
 **Hugging Face (one line):**
 
 ```python
-from trainscope.integrations.huggingface import TrainScopeCallback
-trainer = Trainer(..., callbacks=[TrainScopeCallback("runs/exp1")])
+from pytscope.integrations.huggingface import PytscopeCallback
+trainer = Trainer(..., callbacks=[PytscopeCallback("runs/exp1")])
 ```
 
 **Then analyze, or compare two runs:**
 
 ```bash
-trainscope analyze runs/exp1
-trainscope diff runs/exp1 runs/exp2   # reproducibility / drift: why do they differ?
+pytscope analyze runs/exp1
+pytscope diff runs/exp1 runs/exp2   # reproducibility / drift: why do they differ?
 ```
 
 Reports lean into a compact, amber-LED hardware-panel aesthetic — every
@@ -259,8 +259,8 @@ to disk besides the run itself.
 No ML deps:
 
 ```bash
-python examples/manual_loop.py     && trainscope analyze runs/demo    # timing
-python examples/cross_signal.py    && trainscope analyze runs/cross   # cross-signal
+python examples/manual_loop.py     && pytscope analyze runs/demo    # timing
+python examples/cross_signal.py    && pytscope analyze runs/cross   # cross-signal
 ```
 
 Real PyTorch (CUDA / Apple MPS / CPU, auto-detected), with real device timing
@@ -268,8 +268,8 @@ and memory:
 
 ```bash
 pip install -e ".[torch]"
-python examples/pytorch_real.py            && trainscope analyze runs/pytorch  # healthy
-python examples/pytorch_real.py --leak     && trainscope analyze runs/pytorch  # catches the leak
+python examples/pytorch_real.py            && pytscope analyze runs/pytorch  # healthy
+python examples/pytorch_real.py --leak     && pytscope analyze runs/pytorch  # catches the leak
 ```
 
 The `--leak` run reports `MEMORY.GROWTH [HIGH]` from genuinely captured device

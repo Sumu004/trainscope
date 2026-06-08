@@ -1,9 +1,9 @@
 """Tests for memory + convergence analyzers and the cross-signal rule."""
 
-from trainscope.analyzers.convergence import analyze_convergence
-from trainscope.analyzers.memory import analyze_memory
-from trainscope.core.events import StepRecord
-from trainscope.diagnosis.engine import DiagnosisContext, run_diagnosis
+from pytscope.analyzers.convergence import analyze_convergence
+from pytscope.analyzers.memory import analyze_memory
+from pytscope.core.events import StepRecord
+from pytscope.diagnosis.engine import DiagnosisContext, run_diagnosis
 
 
 def _codes(findings):

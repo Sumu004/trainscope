@@ -9,7 +9,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.2.0] - 2026-06-08
 
 ### Added
-- **Amber-LED "hardware panel" terminal reports.** `trainscope analyze`/`diff`
+- **Amber-LED "hardware panel" terminal reports.** `pytscope analyze`/`diff`
   now render every section as a lit panel — a colored `●` indicator (red /
   amber / green by what it's reporting: a stalling step-time breakdown, a
   named straggler, a low MFU, …) in front of each heading — plus gradient
@@ -61,8 +61,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **CLI crashed on Windows** (`UnicodeEncodeError: 'charmap' codec can't encode
   character 'Δ'`) whenever a report containing `Δ`/`—`/`•` was printed
   with the console in its default `cp1252` encoding — this is what every CI
-  run on `windows-latest` was hitting (`trainscope diff`'s metrics table header
-  uses `Δ`). `trainscope.cli.main` now re-points stdout/stderr at a UTF-8
+  run on `windows-latest` was hitting (`pytscope diff`'s metrics table header
+  uses `Δ`). `pytscope.cli.main` now re-points stdout/stderr at a UTF-8
   encoder with `errors="replace"` on entry; a no-op on platforms already UTF-8.
 
 ### Changed
@@ -112,12 +112,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   exactly (tested across p, m).
 - **`comm()` context manager** to attribute collective time to a `comm` phase.
 - **Real `examples/ddp_gloo.py`** — runs genuine multi-process gloo DDP (CPU, no
-  GPU needed) with an injectable straggler; `trainscope analyze` then identifies
+  GPU needed) with an injectable straggler; `pytscope analyze` then identifies
   it. Backed by a real multi-process integration test.
 - CLI `analyze` auto-detects multi-rank run directories.
 
 ### Changed
-- Packaging: version is now single-sourced from `trainscope.__version__` (Hatch
+- Packaging: version is now single-sourced from `pytscope.__version__` (Hatch
   dynamic version); `docs/` added to the sdist.
 
 ## [0.1.0] - 2026-06-06
@@ -140,12 +140,12 @@ cross-signal diagnosis engine.
   local-window spike detection for loss and grad-norm.
 - **Cross-signal rule** — correlates spikes across loss / grad-norm / step-time /
   memory on one aligned timeline (the headline diagnostic).
-- **Reproducibility vertical** — `trainscope diff A B` compares provenance,
+- **Reproducibility vertical** — `pytscope diff A B` compares provenance,
   config, and outcomes; diagnoses nondeterminism and finds the first divergence
   step.
-- **CLI** — `trainscope analyze` and `trainscope diff`.
+- **CLI** — `pytscope analyze` and `pytscope diff`.
 - Pure-stdlib core; CUDA/MPS/CPU examples; 58 tests.
 
-[Unreleased]: https://github.com/Sumu004/trainscope/compare/v0.2.0...HEAD
-[0.2.0]: https://github.com/Sumu004/trainscope/releases/tag/v0.2.0
-[0.1.0]: https://github.com/Sumu004/trainscope/releases/tag/v0.1.0
+[Unreleased]: https://github.com/Sumu004/pytscope/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Sumu004/pytscope/releases/tag/v0.2.0
+[0.1.0]: https://github.com/Sumu004/pytscope/releases/tag/v0.1.0

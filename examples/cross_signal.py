@@ -2,17 +2,17 @@
 
 Simulates a training run that hits an optimization blow-up around step 70:
 loss spikes, grad-norm explodes, AND the step time hitches — all at once.
-trainscope correlates them into one finding. No ML deps required.
+pytscope correlates them into one finding. No ML deps required.
 
     python examples/cross_signal.py
-    trainscope analyze runs/cross
+    pytscope analyze runs/cross
 """
 
 import math
 import random
 import time
 
-from trainscope import Profiler
+from pytscope import Profiler
 
 random.seed(0)
 
@@ -41,7 +41,7 @@ def main():
                 prof.log(loss=loss, grad_norm=grad_norm)
 
     prof.finish()
-    print("Recorded runs/cross — now run:  trainscope analyze runs/cross")
+    print("Recorded runs/cross — now run:  pytscope analyze runs/cross")
 
 
 if __name__ == "__main__":

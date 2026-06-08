@@ -1,6 +1,6 @@
 # Diagnostics reference
 
-Every finding trainscope can emit, what triggers it, and what to do. Findings are
+Every finding pytscope can emit, what triggers it, and what to do. Findings are
 ranked by severity (`high` > `med` > `low`). A wrong or noisy finding is a bug —
 please [report it](../CONTRIBUTING.md#reporting-bugs--requesting-features) with
 the run details.
@@ -42,7 +42,7 @@ allocation is meaningful (≥ 64 MB) to avoid false positives on tiny/idle runs.
 batch/shape variation, or call the allocator's empty-cache sparingly.
 
 > Note: memory attribution is most accurate on CUDA, which exposes true in-step
-> peaks. On Apple MPS, trainscope samples resident memory at the step boundary,
+> peaks. On Apple MPS, pytscope samples resident memory at the step boundary,
 > so fragmentation/peak figures are approximate.
 
 ## Convergence
@@ -104,7 +104,7 @@ communication is free; exposed communication is wall-time waste. **Fix:** improv
 compute/communication overlap — DDP gradient bucketing (`bucket_cap_mb`), avoid
 `find_unused_parameters` stalls, overlap the optimizer/all-reduce, or increase
 per-GPU compute so backward lasts long enough to hide the all-reduce. Pass the
-trace with `trainscope analyze <run> --trace trace.json`.
+trace with `pytscope analyze <run> --trace trace.json`.
 
 ### `DIST.PIPELINE_BUBBLE`
 Pipeline idle time exceeds the inherent GPipe minimum `(p-1)/(m+p-1)` — i.e.
@@ -126,7 +126,7 @@ or a bad batch).
 This is the diagnosis no single-axis profiler can make, because it requires all
 axes to share one clock — see [architecture](architecture.md).
 
-## Reproducibility (`trainscope diff A B`)
+## Reproducibility (`pytscope diff A B`)
 
 `diff` is not a single finding but a structured comparison of two runs:
 

@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import re
 
-from trainscope.report import cli_report as r
+from pytscope.report import cli_report as r
 
 _ANSI = re.compile(r"\x1b\[[0-9;]*m")
 

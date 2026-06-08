@@ -1,4 +1,4 @@
-trainscope — ddp  (runs/gpu_straggler)
+pytscope — ddp  (runs/gpu_straggler)
 
 Run summary — 200 steps, 3.0 ms/step, 331.7 steps/s
   step time: median 3.1 ms · p95 3.6 ms · CV 0.13
