@@ -7,6 +7,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- **Self-contained HTML report (`analyze --html out.html`).** A single-file,
+  no-deps "hardware panel" rendering of a run — segmented-digit displays for
+  headline numbers, LED-style meters for phase/budget breakdowns, and lit
+  severity indicators for findings, in a dark/amber retro aesthetic. Inline
+  CSS only (no network fonts/assets, no JS), so it opens instantly anywhere
+  and is safe to attach to CI artifacts or share as one file. Compact by
+  design — the whole story of a run on one scrollable screen.
 - **Colorized, sparkline-enriched CLI reports.** `trainscope analyze`/`diff`
   now render severity-coded findings, gradient-shaded progress bars (red/
   yellow/green by whether a high fraction is good or bad for that line), and

@@ -26,6 +26,7 @@ from .report.cli_report import (
     render_trace,
     set_color_mode,
 )
+from .report.html_report import render_html_report
 
 # Trace files trainscope will auto-detect inside a run directory.
 _TRACE_NAMES = ("trace.json", "trace.json.gz", "kineto.json", "kineto.json.gz")
@@ -76,6 +77,19 @@ def cmd_analyze(args) -> int:
     out += render_budget(efficiency)
     out += render_findings(findings)
     print(out, end="")
+
+    if getattr(args, "html", None):
+        report = render_html_report(
+            name,
+            args.run_dir,
+            timing=timing,
+            findings=findings,
+            memory=memory,
+            convergence=convergence,
+            efficiency=efficiency,
+        )
+        Path(args.html).write_text(report, encoding="utf-8")
+        print(f"\nHTML report written to {args.html}")
     return 0
 
 
@@ -152,6 +166,13 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         dest="flops_per_step",
         help="Training FLOPs per step, to anchor the efficiency budget / MFU.",
+    )
+    p_analyze.add_argument(
+        "--html",
+        default=None,
+        metavar="PATH",
+        help="Write a self-contained, single-file HTML report (LED-panel style, "
+        "no deps/network) to PATH alongside the terminal report.",
     )
     p_analyze.add_argument(
         "--peak-tflops",

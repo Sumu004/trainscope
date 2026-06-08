@@ -246,6 +246,9 @@ trainscope diff runs/exp1 runs/exp2   # reproducibility / drift: why do they dif
 Reports auto-colorize in a real terminal (severity-coded findings, gradient
 bars, loss/step-time sparklines) and degrade to identical plain text when
 piped, in CI, or under `NO_COLOR`/`--color=never` — never garbled, either way.
+Add `--html report.html` for a single-file, no-deps "hardware panel" report
+(segmented-digit readouts, LED meters, lit severity indicators) you can open
+anywhere or attach to a CI artifact.
 
 ## Try the demos
 
