@@ -1,12 +1,18 @@
+<div align="center">
+
 # trainscope
+
+**An intelligence layer for ML training — go beyond collecting metrics to *explaining* them.**
 
 [![CI](https://github.com/Sumu004/trainscope/actions/workflows/ci.yml/badge.svg)](https://github.com/Sumu004/trainscope/actions/workflows/ci.yml)
 [![PyPI version](https://img.shields.io/pypi/v/trainscope.svg)](https://pypi.org/project/trainscope/)
 [![Python versions](https://img.shields.io/pypi/pyversions/trainscope.svg)](https://pypi.org/project/trainscope/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> An intelligence layer for ML training — go beyond collecting metrics to
-> **explaining** them.
+[Quickstart](#quickstart) · [Why it's different](#why-its-different) ·
+[Demos](#try-the-demos) · [Validation](#status--validation) · [Docs](#documentation)
+
+</div>
 
 Standard profilers hand you a 50 MB trace and leave the "so what do I change?"
 to you. `trainscope` captures **timing, memory, convergence signals, and
@@ -156,6 +162,8 @@ trainscope analyze runs/job --trace trace.json   # from torch.profiler
 python examples/exposed_comm.py && trainscope analyze runs/trace_demo  # no GPU
 ```
 
+---
+
 ## Overhead
 
 Measured on `tests/test_overhead.py` (run `pytest -s`):
@@ -260,6 +268,8 @@ python examples/pytorch_real.py --leak     && trainscope analyze runs/pytorch  #
 The `--leak` run reports `MEMORY.GROWTH [HIGH]` from genuinely captured device
 memory. (Memory attribution is most accurate on CUDA, which exposes true in-step
 peaks; on MPS we sample resident memory at the step boundary.)
+
+---
 
 ## Architecture
 
