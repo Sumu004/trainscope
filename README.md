@@ -187,15 +187,11 @@ python examples/pytorch_real.py --leak && pytscope analyze runs/pytorch   # catc
 
 ## How it works
 
-```
-training loop → collectors → one aligned timeline
-                                  ↓
-              analyzers (timing · memory · convergence · distributed · …)
-                                  ↓
-              diagnosis engine → ranked findings, each with a fix
-                                  ↓
-                     report (clean terminal "hardware panel")
-```
+<div align="center">
+<img src="docs/figures/architecture.png" alt="pytscope pipeline: training loop → collectors → one aligned timeline → analyzers → diagnosis engine → report" width="520">
+</div>
+
+*Figure source: [`docs/figures/architecture.tex`](docs/figures/architecture.tex) (TikZ — rebuild with `pdflatex` + ImageMagick, see the file header).*
 
 Pure-stdlib core, ~3 µs/step overhead — small enough to leave on by default.
 Adding a new diagnosis rule is one decorated function.
