@@ -91,10 +91,18 @@ def test_double_finish_is_idempotent(tmp_path):
 
 # --- CLI end-to-end via subprocess ----------------------------------------
 def _run_cli(*args):
+    # The CLI re-points its own stdout/stderr at UTF-8 (see
+    # cli._ensure_utf8_streams), but subprocess.run(text=True) decodes the
+    # captured bytes with the parent's locale encoding — cp1252 on Windows —
+    # which can't represent the report's `Δ`/`—`/`•` characters and raises
+    # mid-capture, leaving res.stdout/res.stderr as None. Pin the decode to
+    # UTF-8 explicitly so the child's actual encoding is what's used.
     return subprocess.run(
         [sys.executable, "-m", "pytscope.cli", *args],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
 
 

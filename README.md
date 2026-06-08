@@ -2,321 +2,223 @@
 
 # pytscope
 
-**An intelligence layer for ML training — go beyond collecting metrics to *explaining* them.**
+**See *why* your training is slow — not just that it is.**
 
 [![CI](https://github.com/Sumu004/pytscope/actions/workflows/ci.yml/badge.svg)](https://github.com/Sumu004/pytscope/actions/workflows/ci.yml)
 [![PyPI version](https://img.shields.io/pypi/v/pytscope.svg)](https://pypi.org/project/pytscope/)
 [![Python versions](https://img.shields.io/pypi/pyversions/pytscope.svg)](https://pypi.org/project/pytscope/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-[Quickstart](#quickstart) · [Why it's different](#why-its-different) ·
-[Demos](#try-the-demos) · [Validation](#status--validation) · [Docs](#documentation)
+[Install](#install) · [Quickstart](#quickstart) · [What it finds](#what-it-finds) · [Docs](#documentation)
 
 </div>
 
-Standard profilers hand you a 50 MB trace and leave the "so what do I change?"
-to you. `pytscope` captures **timing, memory, convergence signals, and
-provenance on one aligned per-step timeline**, then runs a diagnosis engine that
-turns the raw numbers into ranked, actionable findings.
+## What it does
+
+`pytscope` watches your training loop, then tells you in plain language what's
+slowing it down and how to fix it — not just a wall of numbers.
 
 ```
-● TIMING — 95 steps · 23.1 ms/step · 43.3 steps/s   (median 22.0 · p95 28.4 ms · CV 0.18)
-  step time  ▃▄▅▃▂▃▄▆▃▂▃▄▅▃▂  (low→high)
-  data       ████████████████░░░░░░░░░░░░░░  52.0%    12.01 ms
-  forward    █████████░░░░░░░░░░░░░░░░░░░░░  17.3%     4.00 ms
-  backward   ██████████████░░░░░░░░░░░░░░░░  26.0%     6.01 ms
-  optimizer  █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   4.3%     1.00 ms
+● TIMING — 95 steps · 23.1 ms/step · 43.3 steps/s
+  data       ████████████████░░░░░░░░░░░░░░  52.0%
+  forward    █████████░░░░░░░░░░░░░░░░░░░░░  17.3%
+  backward   ██████████████░░░░░░░░░░░░░░░░  26.0%
+  optimizer  █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   4.3%
 
 ● FINDINGS (1)
   [HIGH] Input pipeline is a bottleneck  (TIMING.DATALOADER_BOUND)
-        52% of step time is spent fetching data (12.0 ms/step). The
-        accelerator is stalling on the dataloader.
-        -> Raise DataLoader num_workers, set persistent_workers=True and
-           pin_memory=True, prefetch, or move heavy transforms off the hot path.
+        52% of step time is spent fetching data. The accelerator is
+        stalling on the dataloader.
+        -> Raise DataLoader num_workers, set persistent_workers=True
+           and pin_memory=True, or move heavy transforms off the hot path.
 ```
 
-In a real terminal, each `●` is a lit indicator that's colored red, amber, or
-green by what it's reporting — the same "hardware panel" grammar carried
-through every section, gradient meter bar, and severity tag.
-
-## The headline: a Training Efficiency Budget
-
-Most profilers hand you a list of findings. pytscope also gives you a single
-**accounting identity** — every second of training, decomposed into named line
-items that provably sum to your measured wall time, anchored to hardware peak
-(**MFU**, Model FLOPs Utilization):
-
-```
-● EFFICIENCY BUDGET — wall-time decomposition
-  MFU 38.0%  ·  useful compute 38.0% of 142.00s wall
-  useful_compute    ███████████░░░░░░░░░░░░░░░░░░  38.0%   53.96s
-  compute_overhead  █████░░░░░░░░░░░░░░░░░░░░░░░░  16.0%   22.72s (recoverable)
-  data_stall        ████████░░░░░░░░░░░░░░░░░░░░░  27.0%   38.34s (recoverable)
-  communication     █████░░░░░░░░░░░░░░░░░░░░░░░░  19.0%   26.98s (recoverable)
-
-  [HIGH] MFU is 38% — 62% of wall is recoverable  (EFFICIENCY.LOW_MFU)
-        Biggest recoverable line: data_stall at 27% of wall.
-        -> Start with data_stall: raise num_workers, persistent_workers, prefetch.
-```
-
-Because the phase timeline partitions each step, the decomposition is **exact** —
-the line items sum to wall with no fudge factor, which makes the model
-falsifiable. And every recoverable line is *seconds you can win back*, so fixes
-rank themselves by payoff. FLOPs are counted automatically
-(`AutoProfiler(measure_flops=True)`); peak comes from a built-in GPU table or
-`--peak-tflops`.
-
-```bash
-python examples/efficiency_mfu.py && pytscope analyze runs/mfu
-```
-
-## Why it's different
-
-One backbone, four lenses. Every analyzer reads the same `StepRecord` timeline,
-so findings can **cross-correlate signals no single existing tool aligns**:
-
-| Vertical | Status |
-|----------|--------|
-| **Distributed** — multi-rank critical-path, straggler & comm/pipeline-bubble analysis | ✅ |
-| **Timing** — attribute step time to data / fwd / bwd / optimizer | ✅ |
-| **Convergence** — loss/grad-norm trend, divergence, spikes | ✅ |
-| **Memory** — peak attribution, fragmentation, leak/growth | ✅ |
-| **Cross-signal** — correlate spikes across all axes on one timeline | ✅ |
-| **Reproducibility** — provenance capture + run-vs-run diff & drift diagnosis | ✅ |
-
-The core is **pure-stdlib** — no heavy deps to profile your training.
-
-### The headline: a finding no single-axis tool can make
-
-```
-● FINDINGS (1)
-  [HIGH] Correlated instability at steps 70–72  (CROSS.CORRELATED_INSTABILITY)
-        At steps 70–72, 3 independent axes spike simultaneously (grad_norm,
-        loss, step_time): loss=3.579, grad_norm=45, step_time=25.6ms.
-        Co-occurrence across axes is strong evidence of a real optimization
-        event, not noise.
-        -> Inspect the LR schedule, gradient clipping, and the batch around
-           steps 70–72. A simultaneous loss + grad-norm spike usually means
-           the update blew up (LR too high / bad batch).
-```
-
-HTA sees only timing; Cockpit only gradients; W&B only logged scalars. pytscope
-sees them **on one clock** and reports the correlation. Reproduce it with
-`python examples/cross_signal.py && pytscope analyze runs/cross`.
-
-### Distributed: the straggler no single-rank profiler can name
-
-In synchronous data-parallel training every rank waits at the gradient
-all-reduce for the **slowest** rank. That idle time is pure waste, and it's
-invisible to any single-rank profiler — you only see it by putting all ranks on
-one timeline. pytscope does, and uses a **statistical persistence test** (not a
-threshold) to tell a genuine bad node from noise:
-
-```
-● DISTRIBUTED — 4 ranks, 60 aligned steps
-  wall lost to imbalance 18.6% · median sync skew 4.7 ms/step
-    rank 0:  10.0 ms ·   0% (z=-4.5)
-    rank 2:  12.0 ms ·  99% (z=+13.4)  <- straggler
-
-● FINDINGS (1)
-  [HIGH] Rank 2 is a persistent straggler  (DIST.STRAGGLER)
-        Rank 2 is the slowest (critical-path) rank in 99% of steps across 4
-        ranks (expected 25% by chance; z=13.4) and runs 20% slower than the
-        median rank. Synchronous all-reduce makes every other rank wait for it
-        — 18.6% of wall time is lost to this imbalance.
-        -> Investigate rank 2's device/host: thermal throttling, a slower GPU,
-           NUMA placement, or an unbalanced data shard.
-```
-
-This is a **real** distributed system — reproduce it on your laptop (CPU, no GPU)
-with genuine multi-process gloo all-reduce:
-
-```bash
-pip install -e ".[torch]"
-python examples/ddp_gloo.py --ranks 4 --straggler-rank 2
-pytscope analyze runs/ddp_gloo
-```
-
-For **pipeline parallelism**, pytscope measures the achieved bubble and compares
-it to the inherent GPipe minimum `(p-1)/(m+p-1)`, so it flags only the *excess*
-bubble you can actually fix — not the bubble that's just the cost of your `p`
-and `m`.
-
-### Exposed communication: the metric that decides large-scale efficiency
-
-Gradient all-reduce *can* run concurrently with backward compute — the part that
-overlaps is free, the part that doesn't is **exposed** and sits on the critical
-path. pytscope ingests a `torch.profiler`/Kineto trace and computes the split
-exactly (interval arithmetic over the kernel timeline):
-
-```
-● COMMUNICATION OVERLAP — from kernel trace
-  comm 36.0 ms · overlapped 67% · exposed 12.0 ms (20% of wall)
-
-  [HIGH] Communication is not overlapped with compute  (DIST.EXPOSED_COMM)
-        20% of wall time is exposed communication. Only 67% of the 36.0 ms of
-        communication is hidden behind compute.
-        -> DDP gradient bucketing (bucket_cap_mb), overlap optimizer/all-reduce,
-           or increase per-GPU compute so backward hides the all-reduce.
-```
-
-```bash
-pytscope analyze runs/job --trace trace.json   # from torch.profiler
-python examples/exposed_comm.py && pytscope analyze runs/trace_demo  # no GPU
-```
-
----
-
-## Overhead
-
-Measured on `tests/test_overhead.py` (run `pytest -s`):
-
-| Path | Cost |
-|------|------|
-| Pure instrumentation (begin/mark×3/end) | **~0.7 µs/step** |
-| End-to-end incl. JSONL disk write | **~3 µs/step** |
-| Disabled DDP rank (no-op) | **~0.06 µs/step** |
-
-On a 50 ms training step that's **~0.006% overhead** — versus trace-dumping
-profilers (Kineto/HTA) that add real overhead and emit multi-MB artifacts.
-Memory bounded (live writer retains nothing); batched flushes; DDP-safe.
+In a real terminal each `●` lights up red, amber, or green — a clean,
+glanceable "hardware panel" view of your run.
 
 ## Install
 
 ```bash
-pip install -e ".[dev]"          # core + tests
-pip install -e ".[torch,lightning,huggingface]"   # framework integrations
+pip install pytscope
+```
+
+Pure Python, no required dependencies. PyTorch/Lightning/HF integrations are
+optional extras:
+
+```bash
+pip install "pytscope[torch,lightning,huggingface]"
 ```
 
 ## Quickstart
 
-**Automatic — zero changes to your loop (recommended):**
+**No changes to your loop (recommended):**
 
 ```python
 from pytscope.auto import AutoProfiler
 
 prof = AutoProfiler("runs/exp1", model, optimizer, warmup=10)
 prof.start()
-for x, y in loader:                           # <- your loop, untouched
+for x, y in loader:                  # <- your loop, untouched
     loss = loss_fn(model(x), y)
     loss.backward()
     optimizer.step(); optimizer.zero_grad()
 prof.finish()
 ```
 
-`AutoProfiler` registers PyTorch hooks (forward, `optimizer.step`, and
-synchronous collectives) to attribute **data / forward / backward / optimizer /
-comm** automatically — no `mark()` calls anywhere in your training code. All
-hooks/patches are removed on `finish()`.
-
-**Manual loop** (full control, or gradient accumulation):
-
-```python
-from pytscope import Profiler
-
-prof = Profiler("runs/exp1", warmup=10)
-prof.start()
-for batch in prof.iter_data(loader):          # times data fetch
-    with prof.step():
-        loss = loss_fn(model(batch))
-        prof.mark("forward")
-        loss.backward();   prof.mark("backward")
-        opt.step(); opt.zero_grad(); prof.mark("optimizer")
-prof.finish()
-```
-
-**Lightning (one line):**
-
-```python
-from pytscope.integrations.lightning import PytscopeCallback
-trainer = pl.Trainer(callbacks=[PytscopeCallback("runs/exp1")])
-```
-
-**Hugging Face (one line):**
-
-```python
-from pytscope.integrations.huggingface import PytscopeCallback
-trainer = Trainer(..., callbacks=[PytscopeCallback("runs/exp1")])
-```
-
-**Then analyze, or compare two runs:**
+**Then read the report:**
 
 ```bash
 pytscope analyze runs/exp1
-pytscope diff runs/exp1 runs/exp2   # reproducibility / drift: why do they differ?
+pytscope diff runs/exp1 runs/exp2     # compare two runs
 ```
 
-Reports lean into a compact, amber-LED hardware-panel aesthetic — every
-section is a "lit panel" (a colored ● indicator that reads red/amber/green by
-severity), with gradient meter bars, severity-coded findings, and
-loss/step-time sparklines. They auto-colorize in a real terminal and degrade
-to byte-identical plain text when piped, in CI, or under
-`NO_COLOR`/`--color=never` — never garbled, either way, and nothing written
-to disk besides the run itself.
+Prefer manual control, or use Lightning / Hugging Face? See the
+[usage guide](docs/usage.md) for those paths.
 
-## Try the demos
+## What it finds
 
-No ML deps:
+One aligned timeline, six lenses — each backed by a real, tested analyzer:
+
+| Lens | What it catches |
+|------|-----------------|
+| **Timing** | Dataloader stalls, slow backward/optimizer, step-time jitter |
+| **Memory** | Peak usage, fragmentation, leaks |
+| **Convergence** | Loss/grad-norm divergence, spikes |
+| **Cross-signal** | Problems that only show up when several signals spike *together* |
+| **Distributed** | Stragglers, load imbalance, pipeline bubbles, exposed communication |
+| **Efficiency budget** | Where every second of wall time goes, anchored to MFU |
+
+A few examples of what the report looks like:
+
+<details>
+<summary><b>A straggler in a 4-rank run</b></summary>
+
+```
+● DISTRIBUTED — 4 ranks, 60 aligned steps
+  wall lost to imbalance 18.6% · median sync skew 4.7 ms/step
+    rank 2:  12.0 ms ·  99% (z=+13.4)  <- straggler
+
+● FINDINGS (1)
+  [HIGH] Rank 2 is a persistent straggler  (DIST.STRAGGLER)
+        Rank 2 is the slowest rank in 99% of steps (expected 25% by
+        chance) — every other rank waits for it on the all-reduce.
+        -> Check rank 2's hardware: thermal throttling, a slower GPU,
+           NUMA placement, or an unbalanced data shard.
+```
+
+Reproduce with real multi-process gloo (CPU, no GPU needed):
+```bash
+pip install "pytscope[torch]"
+python examples/ddp_gloo.py --ranks 4 --straggler-rank 2 && pytscope analyze runs/ddp_gloo
+```
+</details>
+
+<details>
+<summary><b>A finding no single-axis tool can make</b></summary>
+
+```
+● FINDINGS (1)
+  [HIGH] Correlated instability at steps 70–72  (CROSS.CORRELATED_INSTABILITY)
+        3 independent signals spike together (loss, grad_norm, step_time).
+        That co-occurrence is strong evidence of a real optimization
+        event — not noise.
+        -> Check your LR schedule and gradient clipping around steps 70–72.
+```
+
+Most tools watch one signal. `pytscope` watches them on the same clock and
+flags when several move together — that's usually the real story.
+```bash
+python examples/cross_signal.py && pytscope analyze runs/cross
+```
+</details>
+
+<details>
+<summary><b>A training efficiency budget, anchored to hardware peak (MFU)</b></summary>
+
+```
+● EFFICIENCY BUDGET — wall-time decomposition
+  MFU 38.0%  ·  useful compute 38.0% of 142.00s wall
+  useful_compute    ███████████░░░░░░░░░░░░░░░░░░  38.0%
+  data_stall        ████████░░░░░░░░░░░░░░░░░░░░░  27.0%  (recoverable)
+  communication     █████░░░░░░░░░░░░░░░░░░░░░░░░  19.0%  (recoverable)
+
+  [HIGH] MFU is 38% — 62% of wall is recoverable  (EFFICIENCY.LOW_MFU)
+        Biggest win: data_stall at 27% of wall.
+        -> Start there: raise num_workers, persistent_workers, prefetch.
+```
+
+Every line is exact — they sum to your measured wall time, no fudge factor.
+```bash
+python examples/efficiency_mfu.py && pytscope analyze runs/mfu
+```
+</details>
+
+<details>
+<summary><b>Exposed communication — the metric that decides large-scale efficiency</b></summary>
+
+```
+● COMMUNICATION OVERLAP — from kernel trace
+  comm 36.0 ms · overlapped 67% · exposed 12.0 ms (20% of wall)
+
+  [HIGH] Communication is not overlapped with compute  (DIST.EXPOSED_COMM)
+        Only 67% of your all-reduce is hidden behind compute.
+        -> Try DDP gradient bucketing, or increase per-GPU compute so
+           backward hides the all-reduce.
+```
 
 ```bash
-python examples/manual_loop.py     && pytscope analyze runs/demo    # timing
-python examples/cross_signal.py    && pytscope analyze runs/cross   # cross-signal
+pytscope analyze runs/job --trace trace.json   # from torch.profiler
 ```
+</details>
 
-Real PyTorch (CUDA / Apple MPS / CPU, auto-detected), with real device timing
-and memory:
+## Try it now (no GPU, no setup)
 
 ```bash
-pip install -e ".[torch]"
-python examples/pytorch_real.py            && pytscope analyze runs/pytorch  # healthy
-python examples/pytorch_real.py --leak     && pytscope analyze runs/pytorch  # catches the leak
+python examples/manual_loop.py  && pytscope analyze runs/demo   # timing
+python examples/cross_signal.py && pytscope analyze runs/cross  # cross-signal
 ```
 
-The `--leak` run reports `MEMORY.GROWTH [HIGH]` from genuinely captured device
-memory. (Memory attribution is most accurate on CUDA, which exposes true in-step
-peaks; on MPS we sample resident memory at the step boundary.)
+With real PyTorch (CUDA / Apple MPS / CPU, auto-detected):
 
----
-
-## Architecture
-
-```
-training loop → collectors → RunStore (aligned timeline)
-                                  ↓
-              analyzers (timing | memory | convergence | repro)
-                                  ↓
-              diagnosis engine (ranked, cross-signal findings)
-                                  ↓
-                  reporters (CLI — amber-LED hardware-panel terminal report)
+```bash
+pip install "pytscope[torch]"
+python examples/pytorch_real.py --leak && pytscope analyze runs/pytorch   # catches a memory leak
 ```
 
-Adding a heuristic is one decorated function (`@rule`); adding a vertical is one
-analyzer over the existing timeline.
+## How it works
 
-## Status & validation
+```
+training loop → collectors → one aligned timeline
+                                  ↓
+              analyzers (timing · memory · convergence · distributed · …)
+                                  ↓
+              diagnosis engine → ranked findings, each with a fix
+                                  ↓
+                     report (clean terminal "hardware panel")
+```
 
-**v0.1, validated on real multi-GPU NCCL hardware** — straggler attribution and
-exposed-comm now have a clean run on 2× T4 (Kaggle, free tier, no paid rental):
-an exact pass on straggler detection (`z=14.1`, named the injected rank
-correctly) and a directionally-correct exposed-comm read that also surfaced a
-genuine finding about PCIe-only interconnects. MFU-on-GPU is the last gap —
-unblocked (a demo bug found and fixed) with a rerun pending.
-[Full report →](docs/validation-runs/2026-06-08-kaggle-2xT4/RESULTS.md) ·
-[Validation matrix & protocol →](docs/VALIDATION.md)
+Pure-stdlib core, ~3 µs/step overhead — small enough to leave on by default.
+Adding a new diagnosis rule is one decorated function.
 
-DDP is first-class; FSDP/tensor/pipeline parallelism are not yet.
+## Status
+
+Validated on real multi-GPU NCCL hardware (2× T4): straggler detection and
+exposed-communication analysis both confirmed on real runs — see the
+[full report](docs/validation-runs/2026-06-08-kaggle-2xT4/RESULTS.md) and
+[validation matrix](docs/VALIDATION.md). DDP is first-class today;
+FSDP / tensor parallelism are on the roadmap.
 
 ## Documentation
 
-- [Usage guide](docs/usage.md) — install, instrument, and the CLI.
-- [Architecture](docs/architecture.md) — the one-timeline design.
-- [Diagnostics reference](docs/diagnostics.md) — every finding and its fix.
-- [Validation](docs/VALIDATION.md) — what's proven, and the multi-GPU protocol.
+- [Usage guide](docs/usage.md) — install, instrument, and the CLI
+- [Architecture](docs/architecture.md) — the one-timeline design
+- [Diagnostics reference](docs/diagnostics.md) — every finding and its fix
+- [Validation](docs/VALIDATION.md) — what's proven, and how to reproduce it
 
 ## Contributing
 
-Contributions are welcome — adding a diagnosis rule is the most approachable
-first PR. See [CONTRIBUTING.md](CONTRIBUTING.md) and the
+Contributions are welcome — adding a diagnosis rule is the easiest first PR.
+See [CONTRIBUTING.md](CONTRIBUTING.md) and the
 [Code of Conduct](CODE_OF_CONDUCT.md). Releases follow [RELEASING.md](RELEASING.md).
 
 ## License
