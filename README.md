@@ -274,14 +274,16 @@ analyzer over the existing timeline.
 
 ## Status & validation
 
-trainscope is **v0.1, single-node validated.** The timing/auto-instrumentation/
-straggler-statistics/exposed-comm-math/FLOP-counting paths are tested on real
-torch and real multi-process gloo DDP (and auto-instrumentation is verified
-correct under gradient accumulation and activation checkpointing). The numbers
-that need real multi-GPU NCCL — exposed comm and MFU on actual hardware — are
-**not yet validated at scale**; see [docs/VALIDATION.md](docs/VALIDATION.md) for
-exactly what's proven where, and a reproducible GPU protocol. DDP is first-class;
-FSDP/tensor/pipeline parallelism are not yet.
+**v0.1, validated on real multi-GPU NCCL hardware** — straggler attribution and
+exposed-comm now have a clean run on 2× T4 (Kaggle, free tier, no paid rental):
+an exact pass on straggler detection (`z=14.1`, named the injected rank
+correctly) and a directionally-correct exposed-comm read that also surfaced a
+genuine finding about PCIe-only interconnects. MFU-on-GPU is the last gap —
+unblocked (a demo bug found and fixed) with a rerun pending.
+[Full report →](docs/validation-runs/2026-06-08-kaggle-2xT4/RESULTS.md) ·
+[Validation matrix & protocol →](docs/VALIDATION.md)
+
+DDP is first-class; FSDP/tensor/pipeline parallelism are not yet.
 
 ## Documentation
 
