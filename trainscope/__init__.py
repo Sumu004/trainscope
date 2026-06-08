@@ -25,7 +25,7 @@ from .diagnosis.engine import DiagnosisContext, Finding, run_diagnosis
 from .hardware import measure_flops, peak_flops_for
 from .profiler import Profiler
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "Profiler",

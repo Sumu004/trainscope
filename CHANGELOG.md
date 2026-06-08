@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-08
+
 ### Added
 - **Amber-LED "hardware panel" terminal reports.** `trainscope analyze`/`diff`
   now render every section as a lit panel — a colored `●` indicator (red /
@@ -144,5 +146,6 @@ cross-signal diagnosis engine.
 - **CLI** — `trainscope analyze` and `trainscope diff`.
 - Pure-stdlib core; CUDA/MPS/CPU examples; 58 tests.
 
-[Unreleased]: https://github.com/Sumu004/trainscope/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Sumu004/trainscope/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Sumu004/trainscope/releases/tag/v0.2.0
 [0.1.0]: https://github.com/Sumu004/trainscope/releases/tag/v0.1.0
