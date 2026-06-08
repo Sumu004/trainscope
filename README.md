@@ -20,13 +20,12 @@ provenance on one aligned per-step timeline**, then runs a diagnosis engine that
 turns the raw numbers into ranked, actionable findings.
 
 ```
-Run summary — 95 steps, 23.1 ms/step, 43.3 steps/s
-
-Step time breakdown:
-  data       ############------------------  52.0%    12.01 ms
-  forward    #########---------------------  17.3%     4.00 ms
-  backward   ##############----------------  26.0%     6.01 ms
-  optimizer  #-----------------------------   4.3%     1.00 ms
+⏻ 95 steps · 23.1 ms/step · 43.3 steps/s   (median 22.0 · p95 28.4 ms · CV 0.18)
+  step time  ▃▄▅▃▂▃▄▆▃▂▃▄▅▃▂  (low→high)
+  data       ████████████████░░░░░░░░░░░░░░  52.0%    12.01 ms
+  forward    █████████░░░░░░░░░░░░░░░░░░░░░  17.3%     4.00 ms
+  backward   ██████████████░░░░░░░░░░░░░░░░  26.0%     6.01 ms
+  optimizer  █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   4.3%     1.00 ms
 
 Findings (1):
   [HIGH] Input pipeline is a bottleneck  (TIMING.DATALOADER_BOUND)
@@ -44,12 +43,12 @@ items that provably sum to your measured wall time, anchored to hardware peak
 (**MFU**, Model FLOPs Utilization):
 
 ```
-Efficiency budget (wall-time decomposition):
-  MFU 38.0%  ·  useful compute 38.0% of 142.0s wall
-  useful_compute    ###########-------------------  38.0%   53.96s
-  compute_overhead  #####-------------------------  16.0%   22.72s (recoverable)
-  data_stall        ########----------------------  27.0%   38.34s (recoverable)
-  communication     #####-------------------------  19.0%   26.98s (recoverable)
+Efficiency budget — wall-time decomposition:
+  MFU 38.0%  ·  useful compute 38.0% of 142.00s wall
+  useful_compute    ███████████░░░░░░░░░░░░░░░░░░  38.0%   53.96s
+  compute_overhead  █████░░░░░░░░░░░░░░░░░░░░░░░░  16.0%   22.72s (recoverable)
+  data_stall        ████████░░░░░░░░░░░░░░░░░░░░░  27.0%   38.34s (recoverable)
+  communication     █████░░░░░░░░░░░░░░░░░░░░░░░░  19.0%   26.98s (recoverable)
 
   [HIGH] MFU is 38% — 62% of wall is recoverable  (EFFICIENCY.LOW_MFU)
         Biggest recoverable line: data_stall at 27% of wall.
@@ -240,15 +239,20 @@ trainer = Trainer(..., callbacks=[TrainScopeCallback("runs/exp1")])
 
 ```bash
 trainscope analyze runs/exp1
-trainscope diff runs/exp1 runs/exp2   # reproducibility / drift: why do they differ?
+trainscope diff runs/exp1 runs/exp2     # reproducibility / drift: why do they differ?
+trainscope visualize runs/exp1          # chart dashboard: trends + breakdowns, one HTML file
 ```
 
-Reports auto-colorize in a real terminal (severity-coded findings, gradient
-bars, loss/step-time sparklines) and degrade to identical plain text when
-piped, in CI, or under `NO_COLOR`/`--color=never` — never garbled, either way.
-Add `--html report.html` for a single-file, no-deps "hardware panel" report
-(segmented-digit readouts, LED meters, lit severity indicators) you can open
-anywhere or attach to a CI artifact.
+Terminal reports lean into a compact, amber-LED-style readout — gradient
+meter bars, severity-coded findings, loss/step-time sparklines — and auto­
+colorize in a real terminal while degrading to identical plain text when
+piped, in CI, or under `NO_COLOR`/`--color=never`. Add `--html report.html`
+for a single-file "hardware panel" report (segmented-digit readouts, LED
+meters, lit severity indicators), or run `trainscope visualize` for a
+chart-based dashboard (SVG trend lines for step time/loss/grad-norm/memory,
+breakdown bars for phases/budget/stragglers). All three are single
+self-contained files — no deps, no network assets, open anywhere or attach
+to a CI artifact.
 
 ## Try the demos
 
@@ -283,7 +287,7 @@ training loop → collectors → RunStore (aligned timeline)
                                   ↓
               diagnosis engine (ranked, cross-signal findings)
                                   ↓
-                  reporters (CLI | HTML | markdown)
+              reporters (CLI · HTML "hardware panel" · chart dashboard)
 ```
 
 Adding a heuristic is one decorated function (`@rule`); adding a vertical is one

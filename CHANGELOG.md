@@ -7,6 +7,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- **`trainscope visualize` — chart-based dashboard.** A new subcommand that
+  renders SVG trend charts (step time, loss, grad-norm, memory-over-time) and
+  LED-style breakdown bars (phase attribution, per-rank straggler share,
+  efficiency budget) as one self-contained HTML file — `trainscope visualize
+  runs/exp1 [--out dashboard.html]`. Pure inline SVG + CSS in the same
+  amber/LED visual language as the HTML report; no matplotlib, no JS, no
+  network assets — keeps the pure-stdlib core intact (`trainscope/report/
+  charts.py`, `visualize_report.py`, tested in `tests/test_visualize_report.py`).
+- **Tighter, more LED-like terminal reports.** `analyze`/`diff` now render
+  meter bars as lit/unlit block segments (`█`/`░`, matching the HTML report's
+  LED-meter language) instead of `#`/`-` ASCII, condense the run-summary into
+  one heading line (steps · ms/step · throughput · median/p95/CV), and drop
+  the double-blank-line padding between sections — same information, faster
+  to scan, byte-identical plain-text degradation preserved and tested.
 - **Self-contained HTML report (`analyze --html out.html`).** A single-file,
   no-deps "hardware panel" rendering of a run — segmented-digit displays for
   headline numbers, LED-style meters for phase/budget breakdowns, and lit

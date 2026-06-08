@@ -92,8 +92,10 @@ def _gradient(frac: float, kind: str | None) -> str | None:
 
 
 def _bar(frac: float, kind: str | None = None) -> str:
+    """LED-meter-style bar: lit segments (█) vs unlit (░) — same visual
+    language as the HTML report's segmented meters, in plain ANSI/unicode."""
     filled = int(round(frac * _BAR_WIDTH))
-    fill, empty = "#" * filled, "-" * (_BAR_WIDTH - filled)
+    fill, empty = "█" * filled, "░" * (_BAR_WIDTH - filled)
     color = _gradient(frac, kind)
     return (_style(fill, color) if color else fill) + _style(empty, "dim")
 
@@ -123,22 +125,19 @@ def render_timing(t: TimingSummary, steps: list | None = None) -> str:
     lines = []
     lines.append(
         _heading(
-            f"Run summary — {t.n_steps} steps, "
-            f"{t.mean_step_time * 1e3:.1f} ms/step, "
+            f"⏻ {t.n_steps} steps · {t.mean_step_time * 1e3:.1f} ms/step · "
             f"{t.steps_per_sec:.1f} steps/s"
         )
-    )
-    lines.append(
-        f"  step time: median {t.p50_step_time * 1e3:.1f} ms · "
-        f"p95 {t.p95_step_time * 1e3:.1f} ms · "
-        f"CV {t.cv:.2f}"
+        + _style(
+            f"   (median {t.p50_step_time * 1e3:.1f} · "
+            f"p95 {t.p95_step_time * 1e3:.1f} ms · CV {t.cv:.2f})",
+            "dim",
+        )
     )
     if steps:
         spark = _sparkline([s.total() for s in steps])
         if spark:
-            lines.append(f"  trend  {spark}  (step time, low→high)")
-    lines.append("")
-    lines.append(_heading("Step time breakdown:"))
+            lines.append(f"  step time  {spark}  (low→high)")
     # Data/comm stalls are overhead (red-when-high); compute phases are neutral.
     _kind = {"data": "bad", "comm": "bad"}
     for phase in t.phase_order:
@@ -151,8 +150,8 @@ def render_timing(t: TimingSummary, steps: list | None = None) -> str:
 
 def render_findings(findings: list[Finding]) -> str:
     if not findings:
-        return _style("\nNo issues found. Training looks balanced.\n", "green")
-    lines = ["", _heading(f"Findings ({len(findings)}):")]
+        return _style("No issues found. Training looks balanced.\n", "green")
+    lines = [_heading(f"Findings ({len(findings)}):")]
     for f in findings:
         lines.append(f"  [{_severity(f.severity)}] {_style(f.title, 'bold')}  ({f.code})")
         lines.append(f"        {f.detail}")
@@ -164,7 +163,7 @@ def render_findings(findings: list[Finding]) -> str:
 def render_memory(m: MemorySummary) -> str:
     if not m or not m.has_memory:
         return ""
-    lines = ["", _heading("Memory:")]
+    lines = [_heading("Memory:")]
     head = (
         f"  peak alloc {m.peak_alloc_bytes / _MB:.0f} MB · "
         f"peak reserved {m.peak_reserved_bytes / _MB:.0f} MB"
@@ -183,7 +182,7 @@ def render_memory(m: MemorySummary) -> str:
 def render_convergence(c: ConvergenceSummary, steps: list | None = None) -> str:
     if not c or not c.has_loss:
         return ""
-    lines = ["", _heading("Convergence:")]
+    lines = [_heading("Convergence:")]
     best = f"{c.best_loss:.4g}" if c.best_loss is not None else "n/a"
     final = f"{c.final_loss:.4g}" if c.final_loss is not None else "n/a"
     trend_color = {"improving": "green", "worsening": "red", "diverged": "red"}.get(
@@ -212,7 +211,7 @@ def render_distributed(d) -> str:
     if not d:
         return ""
     head = f"Distributed — {d.world_size} ranks, {d.n_steps} aligned steps:"
-    lines = ["", _heading(head)]
+    lines = [_heading(head)]
     lines.append(
         f"  mean step wall {d.mean_step_wall * 1e3:.1f} ms · "
         f"comm {d.mean_comm_fraction * 100:.0f}% · "
@@ -240,7 +239,7 @@ def render_pipeline(p) -> str:
     """Render a PipelineSummary (pipeline-bubble analysis)."""
     if not p:
         return ""
-    lines = ["", _heading(f"Pipeline — {p.n_stages} stages:")]
+    lines = [_heading(f"Pipeline — {p.n_stages} stages:")]
     head = f"  bubble {p.bubble_fraction * 100:.0f}%"
     if p.ideal_bubble_fraction is not None:
         head += (
@@ -255,7 +254,7 @@ def render_budget(b) -> str:
     """Render an EfficiencyBudget — the wall-time accounting identity + MFU."""
     if not b:
         return ""
-    lines = ["", _heading("Efficiency budget (wall-time decomposition):")]
+    lines = [_heading("Efficiency budget — wall-time decomposition:")]
     if b.mfu is not None:
         mfu_color = "green" if b.mfu >= 0.5 else ("yellow" if b.mfu >= 0.25 else "red")
         lines.append(
@@ -281,7 +280,7 @@ def render_trace(t) -> str:
     """Render a TraceSummary (exposed-communication analysis)."""
     if not t or not t.has_comm:
         return ""
-    lines = ["", _heading("Communication overlap (from kernel trace):")]
+    lines = [_heading("Communication overlap (from kernel trace):")]
     exp = t.exposed_comm_fraction
     exp_color = "red" if exp >= 0.5 else ("yellow" if exp >= 0.2 else "green")
     lines.append(
@@ -345,8 +344,10 @@ def render_report(
     convergence: ConvergenceSummary | None = None,
     steps: list | None = None,
 ) -> str:
-    out = render_timing(t, steps)
-    out += render_memory(memory) if memory else ""
-    out += render_convergence(convergence, steps) if convergence else ""
-    out += render_findings(findings)
-    return out
+    sections = [
+        render_timing(t, steps),
+        render_memory(memory) if memory else "",
+        render_convergence(convergence, steps) if convergence else "",
+        render_findings(findings),
+    ]
+    return "\n".join(s for s in sections if s)

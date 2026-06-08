@@ -113,7 +113,19 @@ def test_cli_analyze_succeeds(tmp_path):
     _make_run(d, "r", [1.0, 0.5, 0.25])
     res = _run_cli("analyze", str(d))
     assert res.returncode == 0
-    assert "Run summary" in res.stdout
+    assert "steps/s" in res.stdout  # compact run-summary heading
+
+
+def test_cli_visualize_writes_chart_dashboard(tmp_path):
+    d = tmp_path / "run"
+    _make_run(d, "r", [1.0, 0.5, 0.25])
+    out = tmp_path / "viz.html"
+    res = _run_cli("visualize", str(d), "--out", str(out))
+    assert res.returncode == 0
+    assert "Chart dashboard written to" in res.stdout
+    text = out.read_text(encoding="utf-8")
+    assert text.startswith("<!DOCTYPE html>")
+    assert "<svg" in text
 
 
 def test_cli_analyze_empty_dir_fails_cleanly(tmp_path):

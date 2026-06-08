@@ -27,6 +27,7 @@ from .report.cli_report import (
     set_color_mode,
 )
 from .report.html_report import render_html_report
+from .report.visualize_report import render_visualization
 
 # Trace files trainscope will auto-detect inside a run directory.
 _TRACE_NAMES = ("trace.json", "trace.json.gz", "kineto.json", "kineto.json.gz")
@@ -67,16 +68,18 @@ def cmd_analyze(args) -> int:
 
     name = store.meta.get("name", "run") if store else "run"
     print(f"trainscope — {name}  ({args.run_dir})\n")
-    out = ""
+    sections = []
     if timing is not None:
-        out += render_timing(timing, steps)
-        out += render_memory(memory)
-        out += render_convergence(convergence, steps)
-    out += render_distributed(distributed)
-    out += render_trace(trace)
-    out += render_budget(efficiency)
-    out += render_findings(findings)
-    print(out, end="")
+        sections.append(render_timing(timing, steps))
+        sections.append(render_memory(memory))
+        sections.append(render_convergence(convergence, steps))
+    sections.append(render_distributed(distributed))
+    sections.append(render_trace(trace))
+    sections.append(render_budget(efficiency))
+    sections.append(render_findings(findings))
+    # One blank line between sections (not per-section padding) — a tighter,
+    # easier-to-scan layout than the old double-spaced report.
+    print("\n".join(s for s in sections if s), end="")
 
     if getattr(args, "html", None):
         report = render_html_report(
@@ -90,6 +93,46 @@ def cmd_analyze(args) -> int:
         )
         Path(args.html).write_text(report, encoding="utf-8")
         print(f"\nHTML report written to {args.html}")
+    return 0
+
+
+def cmd_visualize(args) -> int:
+    """Render a chart-based dashboard (SVG trend lines + breakdown bars) for
+    timing/memory/convergence/distributed/budget, saved as one self-contained
+    HTML file — the visual counterpart to ``analyze``'s text report."""
+    distributed = None
+    if is_multirank(args.run_dir):
+        ranks = load_multirank(args.run_dir)
+        distributed = analyze_distributed(ranks)
+        store = ranks.get(min(ranks)) if ranks else None
+    else:
+        store = RunStore.load(args.run_dir)
+
+    if (store is None or not store.steps) and distributed is None:
+        print(f"No steps found in {args.run_dir!r}.", file=sys.stderr)
+        return 1
+
+    steps = store.steps[args.warmup :] if store else []
+    timing = analyze_timing(store.steps, warmup=args.warmup) if store else None
+    memory = analyze_memory(steps)
+    convergence = analyze_convergence(steps)
+    efficiency = _resolve_efficiency(args, store, steps)
+
+    name = store.meta.get("name", "run") if store else "run"
+    out_path = Path(args.out)
+    report = render_visualization(
+        name,
+        args.run_dir,
+        steps=steps,
+        timing=timing,
+        memory=memory,
+        convergence=convergence,
+        distributed=distributed,
+        efficiency=efficiency,
+    )
+    out_path.write_text(report, encoding="utf-8")
+    print(f"trainscope visualize — {name}  ({args.run_dir})")
+    print(f"Chart dashboard written to {out_path}")
     return 0
 
 
@@ -182,6 +225,37 @@ def build_parser() -> argparse.ArgumentParser:
         help="Device peak throughput in TFLOP/s (overrides the built-in table).",
     )
     p_analyze.set_defaults(func=cmd_analyze)
+
+    p_viz = sub.add_parser(
+        "visualize",
+        help="Render a chart-based dashboard (SVG trends + bars) to an HTML file",
+    )
+    p_viz.add_argument("run_dir", help="Path to a run directory")
+    p_viz.add_argument(
+        "--warmup", type=int, default=0, help="Steps to drop from the front"
+    )
+    p_viz.add_argument(
+        "--out",
+        default="trainscope_visualize.html",
+        metavar="PATH",
+        help="Output path for the self-contained HTML chart dashboard "
+        "(default: trainscope_visualize.html)",
+    )
+    p_viz.add_argument(
+        "--flops-per-step",
+        type=float,
+        default=None,
+        dest="flops_per_step",
+        help="Training FLOPs per step, to anchor the efficiency budget / MFU.",
+    )
+    p_viz.add_argument(
+        "--peak-tflops",
+        type=float,
+        default=None,
+        dest="peak_tflops",
+        help="Device peak throughput in TFLOP/s (overrides the built-in table).",
+    )
+    p_viz.set_defaults(func=cmd_visualize)
 
     p_diff = sub.add_parser(
         "diff", help="Compare two runs (reproducibility / drift analysis)"
