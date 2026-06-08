@@ -30,12 +30,18 @@ classification and the NCCL overlap numbers are right on real traces.
 Goal: confirm the straggler, exposed-comm, and MFU numbers on real hardware
 against **known-bad configurations**, where the right answer is known a priori.
 
-### Setup (≈1 GPU-hour, ~2×A10/T4 is enough)
+### Setup (≈1 GPU-hour, ~2×A10/T4 is enough — and free)
 
 ```bash
 pip install -e ".[torch]"
 # 2-GPU box; adjust nproc_per_node to the GPU count.
 ```
+
+**Free option:** Kaggle's notebook tier gives 2× T4 GPUs for up to 30
+hrs/week at zero cost — enough to run all three experiments below in one
+sitting. [`docs/validation-runs/README.md`](validation-runs/README.md) has a
+ready-to-run notebook (`kaggle_2xT4.ipynb`) and step-by-step instructions; no
+paid rental needed.
 
 ### Experiment 1 — Straggler attribution (known answer: rank 1)
 

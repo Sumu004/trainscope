@@ -6,6 +6,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- **`docs/validation-runs/`** — a ready-to-run Kaggle notebook
+  (`kaggle_2xT4.ipynb`) plus step-by-step instructions that execute the full
+  multi-GPU validation protocol from `docs/VALIDATION.md` (straggler
+  attribution, exposed-comm overlap, MFU sanity) on **real NCCL/CUDA, for
+  free**, using Kaggle's 2× T4 notebook tier — no paid GPU rental needed.
+
 ### Fixed
 - **CLI crashed on Windows** (`UnicodeEncodeError: 'charmap' codec can't encode
   character 'Δ'`) whenever a report containing `Δ`/`—`/`•` was printed
