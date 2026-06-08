@@ -235,6 +235,10 @@ trainscope analyze runs/exp1
 trainscope diff runs/exp1 runs/exp2   # reproducibility / drift: why do they differ?
 ```
 
+Reports auto-colorize in a real terminal (severity-coded findings, gradient
+bars, loss/step-time sparklines) and degrade to identical plain text when
+piped, in CI, or under `NO_COLOR`/`--color=never` — never garbled, either way.
+
 ## Try the demos
 
 No ML deps:

@@ -24,6 +24,7 @@ from .report.cli_report import (
     render_memory,
     render_timing,
     render_trace,
+    set_color_mode,
 )
 
 # Trace files trainscope will auto-detect inside a run directory.
@@ -67,9 +68,9 @@ def cmd_analyze(args) -> int:
     print(f"trainscope — {name}  ({args.run_dir})\n")
     out = ""
     if timing is not None:
-        out += render_timing(timing)
+        out += render_timing(timing, steps)
         out += render_memory(memory)
-        out += render_convergence(convergence)
+        out += render_convergence(convergence, steps)
     out += render_distributed(distributed)
     out += render_trace(trace)
     out += render_budget(efficiency)
@@ -125,6 +126,13 @@ def cmd_diff(args) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="trainscope", description=__doc__)
+    parser.add_argument(
+        "--color",
+        choices=("auto", "always", "never"),
+        default="auto",
+        help="Colorize report output: auto-detect (default), always, or never. "
+        "Also honors the NO_COLOR / FORCE_COLOR environment conventions.",
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_analyze = sub.add_parser("analyze", help="Analyze a recorded run directory")
@@ -185,6 +193,7 @@ def main(argv=None) -> int:
     _ensure_utf8_streams()
     parser = build_parser()
     args = parser.parse_args(argv)
+    set_color_mode(getattr(args, "color", "auto"))
     return args.func(args)
 
 

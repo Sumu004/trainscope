@@ -6,6 +6,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- **Colorized, sparkline-enriched CLI reports.** `trainscope analyze`/`diff`
+  now render severity-coded findings, gradient-shaded progress bars (red/
+  yellow/green by whether a high fraction is good or bad for that line), and
+  unicode sparklines for step-time and loss trends — pure ANSI escapes, no new
+  deps. Auto-detects whether the terminal can render color (and honors
+  `NO_COLOR`/`FORCE_COLOR` and the new `--color {auto,always,never}` flag),
+  degrading to byte-identical plain text when piped to a file, redirected in
+  CI, or explicitly disabled — the existing "readable either way" contract is
+  unchanged and tested (`tests/test_cli_report.py`).
+
 ### Validated
 - **Real multi-GPU NCCL run (Kaggle, 2× T4, 2026-06-08)** — closes two of the
   three "needs hardware" gaps in `docs/VALIDATION.md`:

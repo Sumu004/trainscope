@@ -1,6 +1,12 @@
-"""Plain-text terminal report. No color deps; readable when piped to a file."""
+"""Terminal report. No color deps (pure ANSI escapes) — auto-detects whether
+the terminal can render them, and degrades to identical plain text when piped
+to a file, redirected in CI, or when ``NO_COLOR``/``--color=never`` is set. See
+https://no-color.org/. Always readable either way."""
 
 from __future__ import annotations
+
+import os
+import sys
 
 from ..analyzers.convergence import ConvergenceSummary
 from ..analyzers.memory import MemorySummary
@@ -12,52 +18,153 @@ _MB = 1024 * 1024
 _SEV_LABEL = {"high": "HIGH", "med": "MED ", "low": "LOW "}
 _BAR_WIDTH = 30
 
+# ---------------------------------------------------------------------------
+# Color: ANSI SGR codes only (no deps). `set_color_mode` lets the CLI honor an
+# explicit `--color {auto,always,never}` flag; absent that, we auto-detect via
+# the NO_COLOR / FORCE_COLOR conventions and whether stdout is a real terminal,
+# so piping to a file or `| cat` in CI silently yields plain text.
+# ---------------------------------------------------------------------------
+_RESET = "\x1b[0m"
+_CODES = {
+    "bold": "1",
+    "dim": "2",
+    "red": "31",
+    "green": "32",
+    "yellow": "33",
+    "blue": "34",
+    "magenta": "35",
+    "cyan": "36",
+}
 
-def _bar(frac: float) -> str:
+_color_override: bool | None = None
+
+
+def set_color_mode(mode: str) -> None:
+    """``mode`` is one of ``auto`` (default, auto-detect), ``always``, ``never``."""
+    global _color_override
+    _color_override = {"always": True, "never": False}.get(mode)
+
+
+def _use_color() -> bool:
+    if _color_override is not None:
+        return _color_override
+    if os.environ.get("NO_COLOR") is not None:
+        return False
+    if os.environ.get("FORCE_COLOR") is not None:
+        return True
+    stream = getattr(sys, "stdout", None)
+    isatty = getattr(stream, "isatty", None)
+    return bool(isatty and isatty())
+
+
+def _style(text: str, *codes: str) -> str:
+    if not text or not _use_color():
+        return text
+    seq = ";".join(_CODES[c] for c in codes)
+    return f"\x1b[{seq}m{text}{_RESET}"
+
+
+_SEV_STYLE = {"high": ("bold", "red"), "med": ("yellow",), "low": ("cyan",)}
+
+
+def _severity(sev: str) -> str:
+    label = _SEV_LABEL.get(sev, "?")
+    return _style(label, *_SEV_STYLE.get(sev, ()))
+
+
+def _heading(text: str) -> str:
+    return _style(text, "bold")
+
+
+# Three-stop gradient (good→ok→bad) by filled fraction. `kind="good"` means a
+# high fraction is *desirable* (useful compute, overlap efficiency) so the
+# ramp is reversed; `kind="bad"` means high is a problem (overhead, exposed
+# comm, data stall); `kind=None` is neutral (e.g. plain timing breakdown).
+def _gradient(frac: float, kind: str | None) -> str | None:
+    if kind is None:
+        return None
+    lo, hi = ("red", "green") if kind == "good" else ("green", "red")
+    if frac < 1 / 3:
+        return lo
+    if frac < 2 / 3:
+        return "yellow"
+    return hi
+
+
+def _bar(frac: float, kind: str | None = None) -> str:
     filled = int(round(frac * _BAR_WIDTH))
-    return "#" * filled + "-" * (_BAR_WIDTH - filled)
+    fill, empty = "#" * filled, "-" * (_BAR_WIDTH - filled)
+    color = _gradient(frac, kind)
+    return (_style(fill, color) if color else fill) + _style(empty, "dim")
 
 
-def render_timing(t: TimingSummary) -> str:
+_SPARK_TICKS = "▁▂▃▄▅▆▇█"
+
+
+def _sparkline(values: list[float], *, color: str | None = None) -> str:
+    """Compress a numeric series into one line of unicode block ticks — a
+    cheap, dependency-free trend chart that survives copy/paste into a log."""
+    vals = [v for v in values if v == v]  # drop NaNs
+    if len(vals) < 2:
+        return ""
+    lo, hi = min(vals), max(vals)
+    span = (hi - lo) or 1.0
+    ticks = "".join(
+        _SPARK_TICKS[min(len(_SPARK_TICKS) - 1, int((v - lo) / span * len(_SPARK_TICKS)))]
+        for v in vals
+    )
+    return _style(ticks, color) if color else ticks
+
+
+def render_timing(t: TimingSummary, steps: list | None = None) -> str:
     if t.n_steps == 0:
         return "No steps recorded.\n"
 
     lines = []
     lines.append(
-        f"Run summary — {t.n_steps} steps, "
-        f"{t.mean_step_time * 1e3:.1f} ms/step, "
-        f"{t.steps_per_sec:.1f} steps/s"
+        _heading(
+            f"Run summary — {t.n_steps} steps, "
+            f"{t.mean_step_time * 1e3:.1f} ms/step, "
+            f"{t.steps_per_sec:.1f} steps/s"
+        )
     )
     lines.append(
         f"  step time: median {t.p50_step_time * 1e3:.1f} ms · "
         f"p95 {t.p95_step_time * 1e3:.1f} ms · "
         f"CV {t.cv:.2f}"
     )
+    if steps:
+        spark = _sparkline([s.total() for s in steps])
+        if spark:
+            lines.append(f"  trend  {spark}  (step time, low→high)")
     lines.append("")
-    lines.append("Step time breakdown:")
+    lines.append(_heading("Step time breakdown:"))
+    # Data/comm stalls are overhead (red-when-high); compute phases are neutral.
+    _kind = {"data": "bad", "comm": "bad"}
     for phase in t.phase_order:
         frac = t.phase_fractions[phase]
         ms = t.phase_seconds[phase] * 1e3
-        lines.append(f"  {phase:<10} {_bar(frac)} {frac * 100:5.1f}%  {ms:7.2f} ms")
+        bar = _bar(frac, _kind.get(phase))
+        lines.append(f"  {phase:<10} {bar} {frac * 100:5.1f}%  {ms:7.2f} ms")
     return "\n".join(lines) + "\n"
 
 
 def render_findings(findings: list[Finding]) -> str:
     if not findings:
-        return "\nNo issues found. Training looks balanced.\n"
-    lines = ["", f"Findings ({len(findings)}):"]
+        return _style("\nNo issues found. Training looks balanced.\n", "green")
+    lines = ["", _heading(f"Findings ({len(findings)}):")]
     for f in findings:
-        lines.append(f"  [{_SEV_LABEL.get(f.severity, '?')}] {f.title}  ({f.code})")
+        lines.append(f"  [{_severity(f.severity)}] {_style(f.title, 'bold')}  ({f.code})")
         lines.append(f"        {f.detail}")
         if f.suggestion:
-            lines.append(f"        -> {f.suggestion}")
+            lines.append(_style(f"        -> {f.suggestion}", "cyan"))
     return "\n".join(lines) + "\n"
 
 
 def render_memory(m: MemorySummary) -> str:
     if not m or not m.has_memory:
         return ""
-    lines = ["", "Memory:"]
+    lines = ["", _heading("Memory:")]
     head = (
         f"  peak alloc {m.peak_alloc_bytes / _MB:.0f} MB · "
         f"peak reserved {m.peak_reserved_bytes / _MB:.0f} MB"
@@ -68,23 +175,35 @@ def render_memory(m: MemorySummary) -> str:
         head += f" · fragmentation {m.fragmentation * 100:.0f}%"
     lines.append(head)
     if m.growth_bytes_per_step > 0:
-        lines.append(f"  growth {m.growth_bytes_per_step / _MB:.2f} MB/step")
+        msg = f"  growth {m.growth_bytes_per_step / _MB:.2f} MB/step"
+        lines.append(_style(msg, "yellow"))
     return "\n".join(lines) + "\n"
 
 
-def render_convergence(c: ConvergenceSummary) -> str:
+def render_convergence(c: ConvergenceSummary, steps: list | None = None) -> str:
     if not c or not c.has_loss:
         return ""
-    lines = ["", "Convergence:"]
+    lines = ["", _heading("Convergence:")]
     best = f"{c.best_loss:.4g}" if c.best_loss is not None else "n/a"
     final = f"{c.final_loss:.4g}" if c.final_loss is not None else "n/a"
-    lines.append(f"  loss trend {c.loss_trend} · best {best} · final {final}")
+    trend_color = {"improving": "green", "worsening": "red", "diverged": "red"}.get(
+        c.loss_trend
+    )
+    trend = _style(c.loss_trend, trend_color) if trend_color else c.loss_trend
+    lines.append(f"  loss trend {trend} · best {best} · final {final}")
+    if steps:
+        losses = [s.scalars["loss"] for s in steps if "loss" in s.scalars]
+        spark = _sparkline(losses, color="green")
+        if spark:
+            lines.append(f"  loss   {spark}  (low→high)")
     if c.diverged_at is not None:
-        lines.append(f"  DIVERGED at step {c.diverged_at}")
+        lines.append(_style(f"  DIVERGED at step {c.diverged_at}", "bold", "red"))
     if c.loss_spikes:
-        lines.append(f"  loss spikes at steps {c.loss_spikes[:8]}")
+        msg = f"  loss spikes at steps {c.loss_spikes[:8]}"
+        lines.append(_style(msg, "yellow"))
     if c.grad_norm_spikes:
-        lines.append(f"  grad-norm spikes at steps {c.grad_norm_spikes[:8]}")
+        msg = f"  grad-norm spikes at steps {c.grad_norm_spikes[:8]}"
+        lines.append(_style(msg, "yellow"))
     return "\n".join(lines) + "\n"
 
 
@@ -92,7 +211,8 @@ def render_distributed(d) -> str:
     """Render a DistributedSummary (multi-rank critical-path analysis)."""
     if not d:
         return ""
-    lines = ["", f"Distributed — {d.world_size} ranks, {d.n_steps} aligned steps:"]
+    head = f"Distributed — {d.world_size} ranks, {d.n_steps} aligned steps:"
+    lines = ["", _heading(head)]
     lines.append(
         f"  mean step wall {d.mean_step_wall * 1e3:.1f} ms · "
         f"comm {d.mean_comm_fraction * 100:.0f}% · "
@@ -104,9 +224,13 @@ def render_distributed(d) -> str:
     )
     lines.append("  per-rank compute (ms/step) · % steps on critical path:")
     for rs in d.ranks:
-        flag = "  <- straggler" if (d.straggler and rs.rank == d.straggler.rank) else ""
+        is_straggler = bool(d.straggler and rs.rank == d.straggler.rank)
+        flag = _style("  <- straggler", "bold", "red") if is_straggler else ""
+        plain_label = f"rank {rs.rank}"
+        rank_label = _style(plain_label, "bold", "red") if is_straggler else plain_label
         lines.append(
-            f"    rank {rs.rank}: {rs.mean_compute * 1e3:7.2f} ms · "
+            f"    {rank_label}: {rs.mean_compute * 1e3:7.2f} ms · "
+            f"{_bar(rs.slowest_fraction, 'bad' if is_straggler else None)} "
             f"{rs.slowest_fraction * 100:4.0f}% (z={rs.straggler_z:+.1f}){flag}"
         )
     return "\n".join(lines) + "\n"
@@ -116,7 +240,7 @@ def render_pipeline(p) -> str:
     """Render a PipelineSummary (pipeline-bubble analysis)."""
     if not p:
         return ""
-    lines = ["", f"Pipeline — {p.n_stages} stages:"]
+    lines = ["", _heading(f"Pipeline — {p.n_stages} stages:")]
     head = f"  bubble {p.bubble_fraction * 100:.0f}%"
     if p.ideal_bubble_fraction is not None:
         head += (
@@ -131,20 +255,23 @@ def render_budget(b) -> str:
     """Render an EfficiencyBudget — the wall-time accounting identity + MFU."""
     if not b:
         return ""
-    lines = ["", "Efficiency budget (wall-time decomposition):"]
+    lines = ["", _heading("Efficiency budget (wall-time decomposition):")]
     if b.mfu is not None:
+        mfu_color = "green" if b.mfu >= 0.5 else ("yellow" if b.mfu >= 0.25 else "red")
         lines.append(
-            f"  MFU {b.mfu * 100:.1f}%  ·  useful compute {b.efficiency * 100:.1f}% "
-            f"of {b.wall:.2f}s wall"
+            f"  MFU {_style(f'{b.mfu * 100:.1f}%', 'bold', mfu_color)}  ·  "
+            f"useful compute {b.efficiency * 100:.1f}% of {b.wall:.2f}s wall"
         )
     else:
         lines.append(f"  wall {b.wall:.2f}s over {b.n_steps} steps (MFU: n/a)")
     for ln in b.lines:
         if ln.seconds <= 0 and ln.name != "useful_compute":
             continue
-        tag = "" if not ln.recoverable else " (recoverable)"
+        tag = _style(" (recoverable)", "yellow") if ln.recoverable else ""
+        is_useful = ln.name == "useful_compute"
+        kind = "good" if is_useful else ("bad" if ln.recoverable else None)
         lines.append(
-            f"  {ln.name:<17} {_bar(ln.fraction)} {ln.fraction * 100:5.1f}%  "
+            f"  {ln.name:<17} {_bar(ln.fraction, kind)} {ln.fraction * 100:5.1f}%  "
             f"{ln.seconds:7.2f}s{tag}"
         )
     return "\n".join(lines) + "\n"
@@ -154,12 +281,14 @@ def render_trace(t) -> str:
     """Render a TraceSummary (exposed-communication analysis)."""
     if not t or not t.has_comm:
         return ""
-    lines = ["", "Communication overlap (from kernel trace):"]
+    lines = ["", _heading("Communication overlap (from kernel trace):")]
+    exp = t.exposed_comm_fraction
+    exp_color = "red" if exp >= 0.5 else ("yellow" if exp >= 0.2 else "green")
     lines.append(
         f"  comm {t.total_comm_time * 1e3:.1f} ms · "
-        f"overlapped {t.overlap_efficiency * 100:.0f}% · "
-        f"exposed {t.exposed_comm_time * 1e3:.1f} ms "
-        f"({t.exposed_comm_fraction * 100:.0f}% of wall)"
+        f"overlapped {_style(f'{t.overlap_efficiency * 100:.0f}%', 'green')} · "
+        f"exposed {_style(f'{t.exposed_comm_time * 1e3:.1f} ms', exp_color)} "
+        f"({_style(f'{exp * 100:.0f}%', exp_color)} of wall)"
     )
     if t.per_collective:
         parts = ", ".join(
@@ -171,37 +300,41 @@ def render_trace(t) -> str:
 
 def render_diff(d) -> str:
     """Render a RunDiff (reproducibility comparison)."""
-    lines = [f"Comparing  A='{d.name_a}'  vs  B='{d.name_b}'", ""]
+    lines = [_heading(f"Comparing  A='{d.name_a}'  vs  B='{d.name_b}'"), ""]
 
     def _fmt(v):
         return "—" if v is None else (f"{v:.4g}" if isinstance(v, float) else str(v))
 
-    lines.append("Environment diffs:")
+    def _diff_line(fd):
+        return f"  {fd.key}: {_fmt(fd.a)}  {_style('->', 'yellow')}  {_fmt(fd.b)}"
+
+    lines.append(_heading("Environment diffs:"))
     if d.env_diffs:
-        for fd in d.env_diffs:
-            lines.append(f"  {fd.key}: {_fmt(fd.a)}  ->  {_fmt(fd.b)}")
+        lines += [_diff_line(fd) for fd in d.env_diffs]
     else:
-        lines.append("  (identical)")
+        lines.append(_style("  (identical)", "dim"))
 
     lines.append("")
-    lines.append("Config diffs:")
+    lines.append(_heading("Config diffs:"))
     if d.config_diffs:
-        for fd in d.config_diffs:
-            lines.append(f"  {fd.key}: {_fmt(fd.a)}  ->  {_fmt(fd.b)}")
+        lines += [_diff_line(fd) for fd in d.config_diffs]
     else:
-        lines.append("  (identical)")
+        lines.append(_style("  (identical)", "dim"))
 
     lines.append("")
-    lines.append("Metrics:")
-    lines.append(f"  {'metric':<16}{'A':>14}{'B':>14}{'Δ':>14}")
+    lines.append(_heading("Metrics:"))
+    lines.append(_style(f"  {'metric':<16}{'A':>14}{'B':>14}{'Δ':>14}", "bold"))
     for md in d.metric_diffs:
-        delta = "—" if md.delta is None else f"{md.delta:+.4g}"
+        # Sign, not magnitude, is what's interesting here — whether A or B came
+        # out ahead depends on the metric (loss down is good; throughput down
+        # isn't), so we highlight the delta without implying good/bad.
+        delta = "—" if md.delta is None else _style(f"{md.delta:+.4g}", "magenta")
         lines.append(f"  {md.key:<16}{_fmt(md.a):>14}{_fmt(md.b):>14}{delta:>14}")
 
     lines.append("")
-    lines.append("Reproducibility:")
+    lines.append(_heading("Reproducibility:"))
     for note in d.notes:
-        lines.append(f"  • {note}")
+        lines.append(f"  {_style('•', 'cyan')} {note}")
     return "\n".join(lines) + "\n"
 
 
@@ -210,9 +343,10 @@ def render_report(
     findings: list[Finding],
     memory: MemorySummary | None = None,
     convergence: ConvergenceSummary | None = None,
+    steps: list | None = None,
 ) -> str:
-    out = render_timing(t)
+    out = render_timing(t, steps)
     out += render_memory(memory) if memory else ""
-    out += render_convergence(convergence) if convergence else ""
+    out += render_convergence(convergence, steps) if convergence else ""
     out += render_findings(findings)
     return out
