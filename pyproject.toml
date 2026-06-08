@@ -44,6 +44,7 @@ torch = ["torch>=2.0"]
 lightning = ["lightning>=2.0"]
 huggingface = ["transformers>=4.30"]
 dev = ["pytest>=7", "pytest-cov", "ruff>=0.4", "build", "twine"]
+docs = ["mkdocs>=1.6", "mkdocs-material>=9.5"]
 
 [project.scripts]
 pytscope = "pytscope.cli:main"

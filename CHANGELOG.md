@@ -49,7 +49,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
     overlap improving in the predicted direction). Documented as an
     interconnect-topology caveat in `docs/VALIDATION.md`.
   - Full report, raw console captures, and analysis:
-    [`docs/validation-runs/2026-06-08-kaggle-2xT4/RESULTS.md`](docs/validation-runs/2026-06-08-kaggle-2xT4/RESULTS.md).
+    [`docs/validation-runs/2026-06-08-kaggle-2xT4/RESULTS.md`](https://github.com/Sumu004/pytscope/blob/main/docs/validation-runs/2026-06-08-kaggle-2xT4/RESULTS.md).
 
 ### Fixed
 - **`examples/efficiency_mfu.py` never selected CUDA** — its device probe only

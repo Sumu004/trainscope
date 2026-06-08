@@ -2,7 +2,7 @@
 
 Every finding pytscope can emit, what triggers it, and what to do. Findings are
 ranked by severity (`high` > `med` > `low`). A wrong or noisy finding is a bug —
-please [report it](../CONTRIBUTING.md#reporting-bugs--requesting-features) with
+please [report it](https://github.com/Sumu004/pytscope/blob/main/CONTRIBUTING.md#reporting-bugs--requesting-features) with
 the run details.
 
 ## Timing

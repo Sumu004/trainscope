@@ -106,4 +106,4 @@ shape is reporter-agnostic, so HTML/markdown backends are additive.
 - **A new vertical** is one analyzer over the existing `StepRecord` stream, its
   summary wired into `DiagnosisContext`, the CLI, and a reporter.
 
-See [CONTRIBUTING](../CONTRIBUTING.md) for the step-by-step recipes.
+See [CONTRIBUTING](https://github.com/Sumu004/pytscope/blob/main/CONTRIBUTING.md) for the step-by-step recipes.

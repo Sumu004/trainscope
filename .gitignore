@@ -11,3 +11,4 @@ htmlcov/
 venv/
 runs/
 .DS_Store
+site/
