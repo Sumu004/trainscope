@@ -1,0 +1,40 @@
+trainscope — ddp  (runs/gpu_straggler)
+
+Run summary — 200 steps, 3.0 ms/step, 331.7 steps/s
+  step time: median 3.1 ms · p95 3.6 ms · CV 0.13
+
+Step time breakdown:
+  forward    ###---------------------------   9.5%     0.29 ms
+  backward   #######-----------------------  22.0%     0.66 ms
+  optimizer  ##----------------------------   6.5%     0.20 ms
+  comm       ###################-----------  61.9%     1.87 ms
+
+Convergence:
+  loss trend plateau · best 1.026 · final 1.052
+  loss spikes at steps [55]
+
+Distributed — 2 ranks, 200 aligned steps:
+  mean step wall 4.4 ms · comm 42% · imbalance CV 0.37
+  wall lost to imbalance 27.5% · median sync skew 0.6 ms/step
+  per-rank compute (ms/step) · % steps on critical path:
+    rank 0:    1.15 ms ·    0% (z=-14.1)
+    rank 1:    2.55 ms ·  100% (z=+14.1)  <- straggler
+
+Efficiency budget (wall-time decomposition):
+  wall 0.60s over 200 steps (MFU: n/a)
+  useful_compute    ###########-------------------  38.1%     0.23s
+  communication     ###################-----------  61.9%     0.37s (recoverable)
+
+Findings (4):
+  [HIGH] Rank 1 is a persistent straggler  (DIST.STRAGGLER)
+        Rank 1 is the slowest (critical-path) rank in 100% of steps across 2 ranks (expected 50% by chance; z=14.1), and runs 37% slower than the median rank. Synchronous all-reduce makes every other rank wait for it — 27.5% of wall time is lost to this imbalance.
+        -> Investigate rank 1's device/host: thermal throttling, a slower GPU, NUMA/host placement, or an unbalanced data shard. Check for a hot node and rebalance or replace it.
+  [HIGH] 62% of wall time is recoverable (communication)  (EFFICIENCY.RECOVERABLE)
+        Biggest recoverable line: communication at 62% of wall (0.37s over 200 steps). Top recoverable: communication 62%.
+        -> Start with communication: overlap the all-reduce with backward (DDP bucketing), or raise per-GPU compute so communication is hidden.
+  [MED ] Communication dominates step time  (DIST.COMM_BOUND)
+        Collective communication is 42% of step wall time across 2 ranks — the gradient all-reduce is not hidden behind compute.
+        -> Overlap communication with backward (DDP gradient bucketing / `no_sync` for accumulation), increase the per-step compute (larger local batch), enable gradient compression, or check interconnect bandwidth (NVLink/InfiniBand vs Ethernet).
+  [LOW ] Loss has plateaued  (CONVERGENCE.NO_PROGRESS)
+        Loss trend over the run is 'plateau' (best 1.026, final 1.052).
+        -> Worsening: likely LR too high or unstable optimizer. Plateau: try LR decay, more capacity, or check the data is still informative.

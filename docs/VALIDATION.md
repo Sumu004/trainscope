@@ -17,9 +17,9 @@ trust is worse than no number.
 | Exposed-comm interval math | Synthetic traces with hand-computed answers (exact) | Any machine ✅ |
 | Kineto trace parsing | Against a real `torch.profiler` export | Any machine ✅ |
 | FLOP counting | Real `torch` FlopCounterMode, exact vs analytic | Any machine ✅ |
-| **Exposed-comm on real NCCL** | **Not yet — needs multi-GPU** | ⛔ pending |
-| **MFU vs measured GPU throughput** | **Not yet — needs GPU** | ⛔ pending |
-| **Straggler on real NCCL all-reduce** | **Not yet — needs ≥2 GPUs** | ⛔ pending |
+| **Exposed-comm on real NCCL** | Real 2×T4 NCCL run, two batch-size configs — see [validation-runs/2026-06-08-kaggle-2xT4](validation-runs/2026-06-08-kaggle-2xT4/RESULTS.md) | ✅ validated (2026-06-08) |
+| **MFU vs measured GPU throughput** | Blocked on an example bug (now fixed); rerun pending — see the same report, Experiment 3 | ⛔ pending (unblocked) |
+| **Straggler on real NCCL all-reduce** | Real 2×T4 NCCL run, exact pass (z=14.1, named rank correctly) — see [validation-runs/2026-06-08-kaggle-2xT4](validation-runs/2026-06-08-kaggle-2xT4/RESULTS.md) | ✅ validated (2026-06-08) |
 
 The single-node gloo path exercises the *same code* the GPU path uses (same
 analyzer, same rules); what the GPU run adds is confidence that the kernel
@@ -77,6 +77,18 @@ p.export_chrome_trace("runs/gpu_job/trace.json")
 
 **Acceptance:** overlap_efficiency(b) ≫ overlap_efficiency(a); exposed-comm
 fraction tracks the configuration in the expected direction.
+
+> **Interconnect-topology caveat (confirmed 2026-06-08 on Kaggle 2×T4, PCIe —
+> see [validation-runs/2026-06-08-kaggle-2xT4](validation-runs/2026-06-08-kaggle-2xT4/RESULTS.md)):**
+> on link-bandwidth-bound hardware (no NVLink/InfiniBand), absolute
+> communication time is roughly *constant* across batch sizes — the all-reduce
+> is bound by interconnect throughput, not by how much there is to overlap it
+> with. `DIST.EXPOSED_COMM` may legitimately fire HIGH for *both* configs there
+> (it did: 72% exposed at batch=4, 62% at batch=256). The directional claim
+> (`overlap_efficiency(b) > overlap_efficiency(a)`) still held — read it as the
+> pass condition on PCIe-only hardware; "(b) absent/LOW" is the expected outcome
+> only on NVLink/InfiniBand-connected GPUs, where backward can fully hide a
+> faster reduce.
 
 ### Experiment 3 — MFU sanity vs a known model
 

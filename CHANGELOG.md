@@ -6,6 +6,31 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Validated
+- **Real multi-GPU NCCL run (Kaggle, 2× T4, 2026-06-08)** — closes two of the
+  three "needs hardware" gaps in `docs/VALIDATION.md`:
+  - **Straggler attribution: exact pass.** `DIST.STRAGGLER` named the injected
+    rank correctly (z=14.1, 100% critical-path share vs 50% expected by chance,
+    27.5% wall lost to imbalance).
+  - **Exposed communication: directionally confirmed**, plus a genuine finding
+    about the hardware itself — on PCIe-only GPU pairs (no NVLink) the
+    all-reduce is link-bandwidth-bound, so absolute exposed-comm time stays
+    roughly constant across batch sizes (`DIST.EXPOSED_COMM` correctly fired
+    HIGH for both the small- and large-batch configs: 72% vs 62% exposed,
+    overlap improving in the predicted direction). Documented as an
+    interconnect-topology caveat in `docs/VALIDATION.md`.
+  - Full report, raw console captures, and analysis:
+    [`docs/validation-runs/2026-06-08-kaggle-2xT4/RESULTS.md`](docs/validation-runs/2026-06-08-kaggle-2xT4/RESULTS.md).
+
+### Fixed
+- **`examples/efficiency_mfu.py` never selected CUDA** — its device probe only
+  checked `mps`/`cpu`, so on a CUDA box it silently profiled the CPU and
+  reported a meaningless ~0% MFU anchored against an A100 peak it never
+  touched (caught by the Kaggle validation run above). Now checks `cuda` first
+  and, when on CUDA, leaves `peak_flops` unset so `AutoProfiler` looks the
+  actual device up in the hardware peak table instead of hard-coding an
+  A100 anchor.
+
 ### Added
 - **`docs/validation-runs/`** — a ready-to-run Kaggle notebook
   (`kaggle_2xT4.ipynb`) plus step-by-step instructions that execute the full

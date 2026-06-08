@@ -83,6 +83,9 @@ markers = [
 [tool.ruff]
 line-length = 90
 target-version = "py39"
+# Notebooks under docs/ are runnable documentation (Kaggle/Colab cells with
+# shell magics like `!torchrun ...`), not library code — exclude from linting.
+extend-exclude = ["docs/**/*.ipynb"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W", "UP", "B"]

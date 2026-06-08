@@ -1,0 +1,30 @@
+trainscope — run  (runs/exp3_mfu)
+
+Run summary — 55 steps, 25.6 ms/step, 39.0 steps/s
+  step time: median 24.8 ms · p95 29.7 ms · CV 0.08
+
+Step time breakdown:
+  data       ####--------------------------  13.7%     3.50 ms
+  forward    ########----------------------  25.2%     6.46 ms
+  backward   ###########-------------------  36.1%     9.26 ms
+  optimizer  ########----------------------  25.0%     6.40 ms
+
+Convergence:
+  loss trend plateau · best 1.016 · final 1.025
+
+Efficiency budget (wall-time decomposition):
+  MFU 0.2%  ·  useful compute 0.2% of 1.41s wall
+  useful_compute    ------------------------------   0.2%     0.00s
+  compute_overhead  ##########################----  86.1%     1.21s (recoverable)
+  data_stall        ####--------------------------  13.7%     0.19s (recoverable)
+
+Findings (3):
+  [HIGH] MFU is 0% — 100% of wall is recoverable  (EFFICIENCY.LOW_MFU)
+        Useful compute is 0% of wall (FLOPs at peak). Biggest recoverable line: compute_overhead at 86% of wall (1.21s over 55 steps). Top recoverable: compute_overhead 86%, data_stall 14%.
+        -> Start with compute_overhead: enable mixed precision (AMP/bf16), torch.compile, or fused kernels so compute approaches peak throughput.
+  [LOW ] Optimizer step is costly  (TIMING.OPTIMIZER_HEAVY)
+        25% of step time is the optimizer. For small models this can dominate; for large ones it may signal a Python-side per-parameter loop.
+        -> Use a fused/foreach optimizer (foreach=True or fused=True) to batch the parameter updates.
+  [LOW ] Loss has plateaued  (CONVERGENCE.NO_PROGRESS)
+        Loss trend over the run is 'plateau' (best 1.016, final 1.025).
+        -> Worsening: likely LR too high or unstable optimizer. Plateau: try LR decay, more capacity, or check the data is still informative.

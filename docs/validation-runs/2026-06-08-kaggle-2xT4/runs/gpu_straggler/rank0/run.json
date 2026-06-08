@@ -1,0 +1,26 @@
+{
+  "name": "ddp",
+  "config": {},
+  "rank": 0,
+  "world_size": 2,
+  "environment": {
+    "python": "3.12.13",
+    "platform": "Linux-6.6.122+-x86_64-with-glibc2.35",
+    "machine": "x86_64",
+    "processor": "x86_64",
+    "cpu_count": 4,
+    "torch": "2.10.0+cu128",
+    "cuda_available": true,
+    "cuda": "12.8",
+    "gpu": "Tesla T4",
+    "gpu_count": 2,
+    "cudnn_deterministic": false,
+    "cudnn_benchmark": false,
+    "env": {
+      "OMP_NUM_THREADS": "1"
+    }
+  },
+  "started": 1780919679.3002076,
+  "wall_time": 1.092686154,
+  "n_steps": 205
+}

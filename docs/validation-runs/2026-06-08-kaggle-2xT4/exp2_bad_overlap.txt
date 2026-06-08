@@ -1,0 +1,12 @@
+trainscope — run  (runs/exp2_bad)
+
+No steps recorded.
+
+Communication overlap (from kernel trace):
+  comm 170.7 ms · overlapped 8% · exposed 156.2 ms (72% of wall)
+  by collective: all_reduce 170.7ms
+
+Findings (1):
+  [HIGH] Communication is not overlapped with compute  (DIST.EXPOSED_COMM)
+        72% of wall time is *exposed* communication — collective time that does not overlap any compute kernel. Only 8% of the 170.7 ms of communication is hidden behind compute.
+        -> Improve compute/communication overlap: enable DDP gradient bucketing (tune `bucket_cap_mb`), avoid `find_unused_parameters` stalls, overlap optimizer/all-reduce, or increase per-GPU compute so backward lasts long enough to hide the all-reduce.

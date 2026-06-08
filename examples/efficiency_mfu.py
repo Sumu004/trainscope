@@ -21,14 +21,25 @@ from trainscope.auto import AutoProfiler
 
 
 def main() -> None:
-    dev = "mps" if torch.backends.mps.is_available() else "cpu"
+    if torch.cuda.is_available():
+        dev = "cuda"
+    elif torch.backends.mps.is_available():
+        dev = "mps"
+    else:
+        dev = "cpu"
     model = nn.Sequential(nn.Linear(1024, 1024), nn.ReLU(), nn.Linear(1024, 1024)).to(dev)
     opt = torch.optim.Adam(model.parameters(), lr=1e-3)
     loss_fn = nn.MSELoss()
 
     shutil.rmtree("runs/mfu", ignore_errors=True)
     # measure_flops=True → FLOPs/step counted automatically from the first batch.
-    # peak_flops set explicitly here so MFU is defined even off-GPU (≈ A100 bf16).
+    # On CUDA, AutoProfiler looks the device up in the hardware peak table (e.g.
+    # T4 -> 65 TFLOP/s, A100 -> 312 TFLOP/s) — leave peak_flops unset so the
+    # anchor matches the GPU you're actually running on. Off-GPU (CPU/MPS) there
+    # is no device to look up, so set an explicit anchor (~A100 bf16) so MFU is
+    # still defined — it'll legitimately read near-zero there, which is correct:
+    # the model isn't running anywhere near accelerator peak.
+    prof_kwargs = {} if dev == "cuda" else {"peak_flops": 312e12}
     prof = AutoProfiler(
         "runs/mfu",
         model,
@@ -36,7 +47,7 @@ def main() -> None:
         warmup=5,
         sync=True,
         measure_flops=True,
-        peak_flops=312e12,
+        **prof_kwargs,
     )
     prof.start()
     for _ in range(60):
