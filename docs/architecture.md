@@ -6,6 +6,13 @@ per-step timeline, then reason across signals.** Standard tools profile one axis
 read the same `StepRecord` stream, the diagnosis engine can correlate events
 that no single-axis tool can see together.
 
+<figure markdown>
+![pytscope pipeline: training loop → collectors → one aligned timeline → analyzers → diagnosis engine → report](figures/architecture.png){ width="520" }
+<figcaption>Figure source: <a href="https://github.com/Sumu004/pytscope/blob/main/docs/figures/architecture.tex">architecture.tex</a> (TikZ)</figcaption>
+</figure>
+
+Concretely, that pipeline is:
+
 ```
 training loop
    │  (Profiler primitives: iter_data / step / mark / log)
