@@ -7,36 +7,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
-- **`trainscope visualize` — chart-based dashboard.** A new subcommand that
-  renders SVG trend charts (step time, loss, grad-norm, memory-over-time) and
-  LED-style breakdown bars (phase attribution, per-rank straggler share,
-  efficiency budget) as one self-contained HTML file — `trainscope visualize
-  runs/exp1 [--out dashboard.html]`. Pure inline SVG + CSS in the same
-  amber/LED visual language as the HTML report; no matplotlib, no JS, no
-  network assets — keeps the pure-stdlib core intact (`trainscope/report/
-  charts.py`, `visualize_report.py`, tested in `tests/test_visualize_report.py`).
-- **Tighter, more LED-like terminal reports.** `analyze`/`diff` now render
-  meter bars as lit/unlit block segments (`█`/`░`, matching the HTML report's
-  LED-meter language) instead of `#`/`-` ASCII, condense the run-summary into
-  one heading line (steps · ms/step · throughput · median/p95/CV), and drop
-  the double-blank-line padding between sections — same information, faster
-  to scan, byte-identical plain-text degradation preserved and tested.
-- **Self-contained HTML report (`analyze --html out.html`).** A single-file,
-  no-deps "hardware panel" rendering of a run — segmented-digit displays for
-  headline numbers, LED-style meters for phase/budget breakdowns, and lit
-  severity indicators for findings, in a dark/amber retro aesthetic. Inline
-  CSS only (no network fonts/assets, no JS), so it opens instantly anywhere
-  and is safe to attach to CI artifacts or share as one file. Compact by
-  design — the whole story of a run on one scrollable screen.
-- **Colorized, sparkline-enriched CLI reports.** `trainscope analyze`/`diff`
-  now render severity-coded findings, gradient-shaded progress bars (red/
-  yellow/green by whether a high fraction is good or bad for that line), and
-  unicode sparklines for step-time and loss trends — pure ANSI escapes, no new
-  deps. Auto-detects whether the terminal can render color (and honors
-  `NO_COLOR`/`FORCE_COLOR` and the new `--color {auto,always,never}` flag),
-  degrading to byte-identical plain text when piped to a file, redirected in
-  CI, or explicitly disabled — the existing "readable either way" contract is
-  unchanged and tested (`tests/test_cli_report.py`).
+- **Amber-LED "hardware panel" terminal reports.** `trainscope analyze`/`diff`
+  now render every section as a lit panel — a colored `●` indicator (red /
+  amber / green by what it's reporting: a stalling step-time breakdown, a
+  named straggler, a low MFU, …) in front of each heading — plus gradient
+  meter bars rendered as lit/unlit block segments (`█`/`░`), severity-coded
+  findings, and unicode sparklines for step-time and loss trends. The whole
+  grammar (LED color ↔ severity ↔ bar gradient) is consistent across every
+  vertical, and the run summary is condensed onto one heading line (steps ·
+  ms/step · throughput · median/p95/CV) with the old double-blank-line
+  padding between sections removed — same information, faster to scan.
+  Pure ANSI escapes, no new deps: auto-detects whether the terminal can
+  render color (honoring `NO_COLOR`/`FORCE_COLOR` and the new `--color
+  {auto,always,never}` flag), and degrades to byte-identical plain text when
+  piped to a file, redirected in CI, or explicitly disabled — nothing is
+  ever written to disk beyond the run itself (`tests/test_cli_report.py`).
 
 ### Validated
 - **Real multi-GPU NCCL run (Kaggle, 2× T4, 2026-06-08)** — closes two of the

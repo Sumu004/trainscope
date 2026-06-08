@@ -20,20 +20,24 @@ provenance on one aligned per-step timeline**, then runs a diagnosis engine that
 turns the raw numbers into ranked, actionable findings.
 
 ```
-⏻ 95 steps · 23.1 ms/step · 43.3 steps/s   (median 22.0 · p95 28.4 ms · CV 0.18)
+● TIMING — 95 steps · 23.1 ms/step · 43.3 steps/s   (median 22.0 · p95 28.4 ms · CV 0.18)
   step time  ▃▄▅▃▂▃▄▆▃▂▃▄▅▃▂  (low→high)
   data       ████████████████░░░░░░░░░░░░░░  52.0%    12.01 ms
   forward    █████████░░░░░░░░░░░░░░░░░░░░░  17.3%     4.00 ms
   backward   ██████████████░░░░░░░░░░░░░░░░  26.0%     6.01 ms
   optimizer  █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   4.3%     1.00 ms
 
-Findings (1):
+● FINDINGS (1)
   [HIGH] Input pipeline is a bottleneck  (TIMING.DATALOADER_BOUND)
         52% of step time is spent fetching data (12.0 ms/step). The
         accelerator is stalling on the dataloader.
         -> Raise DataLoader num_workers, set persistent_workers=True and
            pin_memory=True, prefetch, or move heavy transforms off the hot path.
 ```
+
+In a real terminal, each `●` is a lit indicator that's colored red, amber, or
+green by what it's reporting — the same "hardware panel" grammar carried
+through every section, gradient meter bar, and severity tag.
 
 ## The headline: a Training Efficiency Budget
 
@@ -43,7 +47,7 @@ items that provably sum to your measured wall time, anchored to hardware peak
 (**MFU**, Model FLOPs Utilization):
 
 ```
-Efficiency budget — wall-time decomposition:
+● EFFICIENCY BUDGET — wall-time decomposition
   MFU 38.0%  ·  useful compute 38.0% of 142.00s wall
   useful_compute    ███████████░░░░░░░░░░░░░░░░░░  38.0%   53.96s
   compute_overhead  █████░░░░░░░░░░░░░░░░░░░░░░░░  16.0%   22.72s (recoverable)
@@ -85,7 +89,7 @@ The core is **pure-stdlib** — no heavy deps to profile your training.
 ### The headline: a finding no single-axis tool can make
 
 ```
-Findings (1):
+● FINDINGS (1)
   [HIGH] Correlated instability at steps 70–72  (CROSS.CORRELATED_INSTABILITY)
         At steps 70–72, 3 independent axes spike simultaneously (grad_norm,
         loss, step_time): loss=3.579, grad_norm=45, step_time=25.6ms.
@@ -109,12 +113,12 @@ one timeline. trainscope does, and uses a **statistical persistence test** (not 
 threshold) to tell a genuine bad node from noise:
 
 ```
-Distributed — 4 ranks, 60 aligned steps:
+● DISTRIBUTED — 4 ranks, 60 aligned steps
   wall lost to imbalance 18.6% · median sync skew 4.7 ms/step
     rank 0:  10.0 ms ·   0% (z=-4.5)
     rank 2:  12.0 ms ·  99% (z=+13.4)  <- straggler
 
-Findings:
+● FINDINGS (1)
   [HIGH] Rank 2 is a persistent straggler  (DIST.STRAGGLER)
         Rank 2 is the slowest (critical-path) rank in 99% of steps across 4
         ranks (expected 25% by chance; z=13.4) and runs 20% slower than the
@@ -146,7 +150,7 @@ path. trainscope ingests a `torch.profiler`/Kineto trace and computes the split
 exactly (interval arithmetic over the kernel timeline):
 
 ```
-Communication overlap (from kernel trace):
+● COMMUNICATION OVERLAP — from kernel trace
   comm 36.0 ms · overlapped 67% · exposed 12.0 ms (20% of wall)
 
   [HIGH] Communication is not overlapped with compute  (DIST.EXPOSED_COMM)
@@ -239,20 +243,16 @@ trainer = Trainer(..., callbacks=[TrainScopeCallback("runs/exp1")])
 
 ```bash
 trainscope analyze runs/exp1
-trainscope diff runs/exp1 runs/exp2     # reproducibility / drift: why do they differ?
-trainscope visualize runs/exp1          # chart dashboard: trends + breakdowns, one HTML file
+trainscope diff runs/exp1 runs/exp2   # reproducibility / drift: why do they differ?
 ```
 
-Terminal reports lean into a compact, amber-LED-style readout — gradient
-meter bars, severity-coded findings, loss/step-time sparklines — and auto­
-colorize in a real terminal while degrading to identical plain text when
-piped, in CI, or under `NO_COLOR`/`--color=never`. Add `--html report.html`
-for a single-file "hardware panel" report (segmented-digit readouts, LED
-meters, lit severity indicators), or run `trainscope visualize` for a
-chart-based dashboard (SVG trend lines for step time/loss/grad-norm/memory,
-breakdown bars for phases/budget/stragglers). All three are single
-self-contained files — no deps, no network assets, open anywhere or attach
-to a CI artifact.
+Reports lean into a compact, amber-LED hardware-panel aesthetic — every
+section is a "lit panel" (a colored ● indicator that reads red/amber/green by
+severity), with gradient meter bars, severity-coded findings, and
+loss/step-time sparklines. They auto-colorize in a real terminal and degrade
+to byte-identical plain text when piped, in CI, or under
+`NO_COLOR`/`--color=never` — never garbled, either way, and nothing written
+to disk besides the run itself.
 
 ## Try the demos
 
@@ -287,7 +287,7 @@ training loop → collectors → RunStore (aligned timeline)
                                   ↓
               diagnosis engine (ranked, cross-signal findings)
                                   ↓
-              reporters (CLI · HTML "hardware panel" · chart dashboard)
+                  reporters (CLI — amber-LED hardware-panel terminal report)
 ```
 
 Adding a heuristic is one decorated function (`@rule`); adding a vertical is one

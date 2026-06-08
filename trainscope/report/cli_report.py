@@ -76,6 +76,30 @@ def _heading(text: str) -> str:
     return _style(text, "bold")
 
 
+# A lit/unlit "panel indicator" — the same retro hardware-panel visual
+# language as a glowing LED, brought into the terminal: a colored dot in
+# front of each section heading. Severity colors line up with `_SEV_STYLE`
+# so the eye learns one grammar across the whole report.
+_LED_COLOR = {
+    "high": "red",
+    "med": "yellow",
+    "low": "cyan",
+    "green": "green",
+    "amber": "yellow",
+    "neutral": "dim",
+}
+
+
+def _led(kind: str = "amber") -> str:
+    return _style("●", _LED_COLOR.get(kind, "dim"))
+
+
+def _panel(title: str, *, led: str = "amber") -> str:
+    """A lit-indicator section heading — ``● TITLE`` — the terminal's take on
+    the hardware-panel aesthetic (every section is a 'lit panel')."""
+    return f"{_led(led)} {_heading(title)}"
+
+
 # Three-stop gradient (good→ok→bad) by filled fraction. `kind="good"` means a
 # high fraction is *desirable* (useful compute, overlap efficiency) so the
 # ramp is reversed; `kind="bad"` means high is a problem (overhead, exposed
@@ -122,18 +146,21 @@ def render_timing(t: TimingSummary, steps: list | None = None) -> str:
     if t.n_steps == 0:
         return "No steps recorded.\n"
 
-    lines = []
-    lines.append(
-        _heading(
-            f"⏻ {t.n_steps} steps · {t.mean_step_time * 1e3:.1f} ms/step · "
-            f"{t.steps_per_sec:.1f} steps/s"
+    # Amber by default; red if a stall phase (data/comm) dominates the step —
+    # the panel "lights up" the same way a hardware meter would peak into the red.
+    stall_frac = sum(t.phase_fractions.get(p, 0.0) for p in ("data", "comm"))
+    lines = [
+        _panel(
+            f"TIMING — {t.n_steps} steps · {t.mean_step_time * 1e3:.1f} ms/step · "
+            f"{t.steps_per_sec:.1f} steps/s",
+            led="high" if stall_frac >= 0.5 else "amber",
         )
         + _style(
             f"   (median {t.p50_step_time * 1e3:.1f} · "
             f"p95 {t.p95_step_time * 1e3:.1f} ms · CV {t.cv:.2f})",
             "dim",
         )
-    )
+    ]
     if steps:
         spark = _sparkline([s.total() for s in steps])
         if spark:
@@ -150,8 +177,14 @@ def render_timing(t: TimingSummary, steps: list | None = None) -> str:
 
 def render_findings(findings: list[Finding]) -> str:
     if not findings:
-        return _style("No issues found. Training looks balanced.\n", "green")
-    lines = [_heading(f"Findings ({len(findings)}):")]
+        return f"{_led('green')} " + _style(
+            "No issues found. Training looks balanced.\n", "green"
+        )
+    worst = next(
+        (s for s in ("high", "med", "low") if any(f.severity == s for f in findings)),
+        "low",
+    )
+    lines = [_panel(f"FINDINGS ({len(findings)})", led=worst)]
     for f in findings:
         lines.append(f"  [{_severity(f.severity)}] {_style(f.title, 'bold')}  ({f.code})")
         lines.append(f"        {f.detail}")
@@ -163,7 +196,8 @@ def render_findings(findings: list[Finding]) -> str:
 def render_memory(m: MemorySummary) -> str:
     if not m or not m.has_memory:
         return ""
-    lines = [_heading("Memory:")]
+    led = "high" if m.growth_bytes_per_step > 0 else "amber"
+    lines = [_panel("MEMORY", led=led)]
     head = (
         f"  peak alloc {m.peak_alloc_bytes / _MB:.0f} MB · "
         f"peak reserved {m.peak_reserved_bytes / _MB:.0f} MB"
@@ -182,7 +216,10 @@ def render_memory(m: MemorySummary) -> str:
 def render_convergence(c: ConvergenceSummary, steps: list | None = None) -> str:
     if not c or not c.has_loss:
         return ""
-    lines = [_heading("Convergence:")]
+    led = (
+        "high" if (c.diverged_at is not None or c.loss_trend == "worsening") else "amber"
+    )
+    lines = [_panel("CONVERGENCE", led=led)]
     best = f"{c.best_loss:.4g}" if c.best_loss is not None else "n/a"
     final = f"{c.final_loss:.4g}" if c.final_loss is not None else "n/a"
     trend_color = {"improving": "green", "worsening": "red", "diverged": "red"}.get(
@@ -210,8 +247,8 @@ def render_distributed(d) -> str:
     """Render a DistributedSummary (multi-rank critical-path analysis)."""
     if not d:
         return ""
-    head = f"Distributed — {d.world_size} ranks, {d.n_steps} aligned steps:"
-    lines = [_heading(head)]
+    head = f"DISTRIBUTED — {d.world_size} ranks, {d.n_steps} aligned steps"
+    lines = [_panel(head, led="high" if d.straggler else "amber")]
     lines.append(
         f"  mean step wall {d.mean_step_wall * 1e3:.1f} ms · "
         f"comm {d.mean_comm_fraction * 100:.0f}% · "
@@ -239,7 +276,7 @@ def render_pipeline(p) -> str:
     """Render a PipelineSummary (pipeline-bubble analysis)."""
     if not p:
         return ""
-    lines = [_heading(f"Pipeline — {p.n_stages} stages:")]
+    lines = [_panel(f"PIPELINE — {p.n_stages} stages", led="amber")]
     head = f"  bubble {p.bubble_fraction * 100:.0f}%"
     if p.ideal_bubble_fraction is not None:
         head += (
@@ -254,7 +291,10 @@ def render_budget(b) -> str:
     """Render an EfficiencyBudget — the wall-time accounting identity + MFU."""
     if not b:
         return ""
-    lines = [_heading("Efficiency budget — wall-time decomposition:")]
+    led = "amber"
+    if b.mfu is not None:
+        led = "green" if b.mfu >= 0.5 else ("med" if b.mfu >= 0.25 else "high")
+    lines = [_panel("EFFICIENCY BUDGET — wall-time decomposition", led=led)]
     if b.mfu is not None:
         mfu_color = "green" if b.mfu >= 0.5 else ("yellow" if b.mfu >= 0.25 else "red")
         lines.append(
@@ -280,9 +320,10 @@ def render_trace(t) -> str:
     """Render a TraceSummary (exposed-communication analysis)."""
     if not t or not t.has_comm:
         return ""
-    lines = [_heading("Communication overlap (from kernel trace):")]
     exp = t.exposed_comm_fraction
     exp_color = "red" if exp >= 0.5 else ("yellow" if exp >= 0.2 else "green")
+    led = "high" if exp >= 0.5 else ("med" if exp >= 0.2 else "amber")
+    lines = [_panel("COMMUNICATION OVERLAP — from kernel trace", led=led)]
     lines.append(
         f"  comm {t.total_comm_time * 1e3:.1f} ms · "
         f"overlapped {_style(f'{t.overlap_efficiency * 100:.0f}%', 'green')} · "
