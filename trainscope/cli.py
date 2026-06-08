@@ -163,7 +163,26 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _ensure_utf8_streams() -> None:
+    """Reports use ``Δ``, ``—``, ``•`` etc. Some platforms (notably Windows,
+    where the console defaults to ``cp1252``/``charmap``) raise
+    ``UnicodeEncodeError`` on these the moment output is redirected (e.g. in
+    CI, or piped to a file). Re-point stdout/stderr at a UTF-8 encoder with a
+    safe fallback so the CLI never crashes on its own report formatting — a
+    no-op on platforms that are already UTF-8."""
+    for stream_name in ("stdout", "stderr"):
+        stream = getattr(sys, stream_name)
+        encoding = (getattr(stream, "encoding", None) or "").lower().replace("-", "")
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None and encoding != "utf8":
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
+
+
 def main(argv=None) -> int:
+    _ensure_utf8_streams()
     parser = build_parser()
     args = parser.parse_args(argv)
     return args.func(args)

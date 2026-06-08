@@ -6,6 +6,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- **CLI crashed on Windows** (`UnicodeEncodeError: 'charmap' codec can't encode
+  character 'Δ'`) whenever a report containing `Δ`/`—`/`•` was printed
+  with the console in its default `cp1252` encoding — this is what every CI
+  run on `windows-latest` was hitting (`trainscope diff`'s metrics table header
+  uses `Δ`). `trainscope.cli.main` now re-points stdout/stderr at a UTF-8
+  encoder with `errors="replace"` on entry; a no-op on platforms already UTF-8.
+
 ### Changed
 - **AutoProfiler is now correct on real models.** A forward re-entrancy guard
   means gradient accumulation records one step per `optimizer.step` (not per
