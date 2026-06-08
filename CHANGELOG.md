@@ -6,6 +6,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-06-08
+
+### Changed
+- **Project renamed from `trainscope` to `pytscope`.** Both `trainscope` and
+  `tscope` were already taken on PyPI; `pytscope` was available. The import
+  path, CLI command, PyPI distribution name, and GitHub repository
+  (`Sumu004/pytscope`) are now all `pytscope`. No functional changes —
+  this release exists solely to publish under the new name (the v0.2.0 tag
+  was cut from the pre-rename tree, so its build still carried the old name).
+
 ## [0.2.0] - 2026-06-08
 
 ### Added
@@ -146,6 +156,7 @@ cross-signal diagnosis engine.
 - **CLI** — `pytscope analyze` and `pytscope diff`.
 - Pure-stdlib core; CUDA/MPS/CPU examples; 58 tests.
 
-[Unreleased]: https://github.com/Sumu004/pytscope/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Sumu004/pytscope/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/Sumu004/pytscope/releases/tag/v0.2.1
 [0.2.0]: https://github.com/Sumu004/pytscope/releases/tag/v0.2.0
 [0.1.0]: https://github.com/Sumu004/pytscope/releases/tag/v0.1.0
